@@ -1,0 +1,20 @@
+@startuml
+title UC-01 - Đặt và thanh toán đơn hàng
+left to right direction
+actor Customer
+actor "Payment Service\n(mock)" as Pay
+rectangle "BrewLite" {
+ usecase "Xem lại giỏ" as Cart
+ usecase "Xác thực JWT" as Auth
+ usecase "Kiểm tra tồn\nvà tạo đơn" as Order
+ usecase "Thanh toán\nidempotent" as Charge
+ usecase "Xem xác nhận" as Confirm
+}
+Customer --> Cart
+Customer --> Order
+Customer --> Charge
+Customer --> Confirm
+Order .> Auth : <<include>>
+Charge .> Order : <<include>>
+Pay --> Charge
+@enduml

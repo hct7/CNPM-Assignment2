@@ -1,0 +1,33 @@
+@startuml
+title BrewLite - deployment topology (production target; provider TBD)
+node "Local developer" {
+ artifact "Browser" as B1
+ node "Docker Compose" { artifact "Next.js :3000" as W1; artifact "NestJS :3001" as A1; database "PostgreSQL :5432" as D1 }
+ B1 --> W1
+ W1 --> A1
+ A1 --> D1
+}
+cloud "CI (GitHub Actions target)" as CI {
+ artifact "Lint / Test / Build" as Q
+ artifact "Docker images tagged by SHA" as I
+ Q --> I
+}
+cloud "Container registry (TBD)" as R
+node "Production platform (TBD)" as P {
+ node "HTTPS ingress / CDN" as IN
+ artifact "Next.js web service" as W
+ artifact "NestJS API service" as A
+ database "Managed PostgreSQL\nprivate network + persistent storage" as D
+ IN --> W : HTTPS 443
+ W --> A : HTTPS/private service
+ A --> D : TCP 5432 (private)
+ note right of A
+  Secrets: platform secret store
+  Health: /health
+  Logs: platform log stream
+ end note
+}
+I --> R : push SHA image
+R --> P : deploy
+CI ..> P : deploy token (CI secret)
+@enduml

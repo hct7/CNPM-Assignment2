@@ -1,0 +1,38 @@
+@startuml
+title UC-01 - Đặt và thanh toán BrewLite
+actor Customer
+boundary "Next.js UI" as UI
+control "NestJS API" as API
+database PostgreSQL as DB
+participant "Payment Service (mock)" as Pay
+Customer -> UI: Xác nhận giỏ + phương thức
+UI -> API: POST /orders [JWT, Idempotency-Key]
+API -> API: Verify JWT, validate DTO
+API -> DB: BEGIN; đọc sản phẩm/tồn/giá
+DB --> API: Dữ liệu hiện hành
+alt hết hàng hoặc dữ liệu sai
+ API -> DB: ROLLBACK
+ API --> UI: 409/400 + lỗi
+ UI --> Customer: Yêu cầu sửa giỏ
+else đủ hàng
+ API -> DB: Tạo Order + OrderItems; trừ tồn; COMMIT
+ DB --> API: orderId, total
+ API --> UI: 201 Order PENDING_PAYMENT
+ UI -> API: POST /orders/{id}/pay [JWT, Idempotency-Key]
+ API -> DB: Tra cứu idempotency/payment
+ alt đã xử lý cùng key
+  DB --> API: Kết quả đã lưu
+ else lần đầu
+  API -> Pay: chargeMock(orderId,total,key)
+  alt thanh toán thành công
+   Pay --> API: SUCCESS + providerRef
+   API -> DB: Ghi Payment SUCCESS; Order CONFIRMED
+  else thanh toán thất bại
+   Pay --> API: FAILED
+   API -> DB: Ghi FAILED; cập nhật Order; hoàn tồn một lần
+  end
+ end
+ API --> UI: Kết quả ổn định theo idempotency key
+ UI --> Customer: Xác nhận hoặc thông báo lỗi
+end
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+title BrewLite - activity đặt hàng end-to-end
+|Khách hàng|
+start
+:Xem menu, chọn size/topping;
+:Thêm sản phẩm vào giỏ;
+if (Đã đăng nhập?) then (Có)
+else (Chưa)
+ :Đăng nhập;
+endif
+:Gửi yêu cầu đặt đơn;
+|Next.js / NestJS|
+:Validate JWT và dữ liệu;
+if (Hợp lệ?) then (Có)
+ :Đọc giá và tồn kho hiện tại;
+ if (Đủ hàng?) then (Có)
+  :Transaction tạo đơn, item, trừ tồn;
+  :Gọi payment mô phỏng với idempotency key;
+  if (Thanh toán thành công?) then (Có)
+   :Lưu SUCCESS;
+   |Khách hàng|
+   :Xem xác nhận và theo dõi đơn;
+  else (Không)
+   :Lưu FAILED; hoàn tồn một lần;
+   |Khách hàng|
+   :Xem lỗi và chọn thử lại/hủy;
+  endif
+ else (Hết hàng)
+  :Rollback; trả 409;
+  |Khách hàng|
+  :Cập nhật giỏ hàng;
+ endif
+else (Không)
+ :Từ chối 401/400;
+ |Khách hàng|
+ :Đăng nhập hoặc sửa dữ liệu;
+endif
+stop
+@enduml
