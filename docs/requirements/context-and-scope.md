@@ -14,7 +14,7 @@ BrewLite là ứng dụng đặt đồ uống cho một cửa hàng cà phê. Kh
 | Đơn vị thanh toán | Giao tiếp qua giao diện tích hợp an toàn | Adapter mô phỏng; không kết nối nhà cung cấp thật |
 
 ## Phạm vi
-**Mục tiêu MVP theo đề:** xem menu/chi tiết, size và topping, giỏ hàng, đăng ký/đăng nhập, tạo đơn, thanh toán mô phỏng Ví/Thẻ, xác nhận, lịch sử đơn, cập nhật trạng thái bởi nhân viên, health check, logging, PostgreSQL và Compose. **Phần hiện có trong mã nguồn:** menu, API danh mục/chi tiết, health, đăng ký/đăng nhập JWT, tạo đơn có transaction, payment mock và lịch sử. Giao diện checkout, lựa chọn topping, cập nhật trạng thái nhân viên, migration runner và integration/E2E tests còn thiếu.
+**Mục tiêu MVP theo đề:** xem menu/chi tiết, size và topping, giỏ hàng, đăng ký/đăng nhập, tạo đơn, thanh toán mô phỏng Ví/Thẻ, xác nhận, lịch sử đơn, cập nhật trạng thái bởi nhân viên, health check, logging, PostgreSQL và Compose. **Phần hiện có trong mã nguồn:** menu, chi tiết cơ bản, lựa chọn size, giỏ, đăng ký/đăng nhập JWT, tạo đơn transaction, payment mock Ví/Thẻ, health và API lịch sử. Lựa chọn topping, giao diện lịch sử/tracking, cập nhật trạng thái nhân viên, migration runner, integration/E2E tests và triển khai production còn thiếu.
 
 **Mở rộng:** PWA cài đặt/offline, khuyến mãi và loyalty đầy đủ, nhiều chi nhánh, báo cáo, thông báo push, cổng thanh toán thực, phân quyền quản trị chi tiết.
 

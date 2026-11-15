@@ -5,10 +5,10 @@
 | FR-01 | US-01 xem menu | Activity-01, Class Product | GET /products | Unit API controller test |
 | FR-02 | US-02 xem chi tiết | Class Product, Sequence-01 | GET /products/:id | Unit API controller test |
 | FR-03 | US-03 quản lý giỏ | Activity-01 | Client cart in menu page | Chưa có E2E |
-| FR-04, NFR-02 | US-04 xác thực | Sequence-01 | POST /auth/register, /auth/login | Chưa có integration test |
-| FR-05, FR-11, NFR-04 | UC-01 đặt đơn | Activity-01, Sequence-01, Class Order | POST /orders | Chưa có integration test |
-| FR-06, NFR-08 | UC-01 thanh toán | Sequence-01, Class Payment | POST /orders/:id/pay | Chưa có integration test |
-| FR-07 | US-05 lịch sử | Class Order | GET /orders/me | Chưa có integration test |
+| FR-04, NFR-02 | US-04 xác thực | Sequence-01 | POST /auth/register, /auth/login + web modal | Chưa có integration test |
+| FR-05, FR-11, NFR-04 | UC-01 đặt đơn | Activity-01, Sequence-01, Class Order | POST /orders + web checkout | Chưa có integration test |
+| FR-06, NFR-08 | UC-01 thanh toán | Sequence-01, Class Payment | POST /orders/:id/pay + mock Wallet/Card | Chưa có integration test |
+| FR-07 | US-05 lịch sử | Class Order | GET /orders/me (API only) | Chưa có integration test |
 | FR-08 | US-06 cập nhật trạng thái | Class Order | Chưa triển khai | Chưa có test |
 | FR-09 | US-07 promotion/loyalty | Class Promotion/LoyaltyTransaction | Domain planned | deferred |
 | NFR-01, NFR-07 | US-01 | Architecture overview | Next.js responsive | manual viewport review |

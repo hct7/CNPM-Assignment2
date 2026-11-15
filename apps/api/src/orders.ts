@@ -85,7 +85,10 @@ export class OrdersController {
       const paymentStatus = success ? 'SUCCESS' : 'FAILED';
       await client.query('INSERT INTO payments(id,order_id,method,status,amount,idempotency_key,provider_ref) VALUES($1,$2,$3,$4,$5,$6,$7)', [randomUUID(), id, body.method, paymentStatus, order.total, key, success ? `MOCK-${randomUUID()}` : null]);
       await client.query('UPDATE orders SET status=$1 WHERE id=$2', [success ? 'CONFIRMED' : 'PAYMENT_FAILED', id]);
-      if (!success) await client.query('UPDATE products p SET stock=p.stock+oi.quantity FROM order_items oi WHERE oi.order_id=$1 AND oi.product_id=p.id', [id]);
+      if (!success) await client.query(
+        'UPDATE products p SET stock=p.stock+reserved.quantity FROM (SELECT product_id,SUM(quantity)::int AS quantity FROM order_items WHERE order_id=$1 GROUP BY product_id) reserved WHERE p.id=reserved.product_id',
+        [id],
+      );
       await client.query('COMMIT');
       return { orderId: id, status: paymentStatus, orderStatus: success ? 'CONFIRMED' : 'PAYMENT_FAILED', total: Number(order.total), replayed: false };
     } catch (error) { await client.query('ROLLBACK'); throw error; }
