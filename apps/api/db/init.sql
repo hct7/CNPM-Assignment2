@@ -6,14 +6,15 @@ CREATE TABLE IF NOT EXISTS products (
   base_price INTEGER NOT NULL CHECK (base_price >= 0),
   stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
   image_url TEXT,
-  active BOOLEAN NOT NULL DEFAULT TRUE
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  UNIQUE(name)
 );
 INSERT INTO products (name, description, category, base_price, stock) VALUES
  ('Cà phê sữa đá', 'Espresso đậm vị cùng sữa đặc và đá.', 'Coffee', 35000, 40),
  ('Bạc xỉu', 'Sữa tươi dịu nhẹ với chút cà phê.', 'Coffee', 39000, 35),
  ('Trà đào cam sả', 'Trà trái cây thơm mát, cam và sả.', 'Tea', 45000, 30),
  ('Cold Brew', 'Ủ lạnh 18 giờ, hậu vị êm.', 'Coffee', 49000, 20)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS orders (
   status TEXT NOT NULL,
   total INTEGER NOT NULL CHECK (total >= 0),
   idempotency_key TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, idempotency_key)
 );

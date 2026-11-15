@@ -1,6 +1,6 @@
 # Kiến trúc BrewLite
 
-Phân lớp trong monorepo: Next.js trình bày UI mobile-first; NestJS tổ chức theo module; PostgreSQL lưu trạng thái giao dịch. Adapter payment mock tách khỏi nghiệp vụ để sau này thay cổng thật. Đây là modular monolith phù hợp nhóm nhỏ; trade-off là scale từng domain độc lập chưa cần thiết.
+Phân lớp trong monorepo: Next.js 16 trình bày UI mobile-first; NestJS 12 tổ chức theo module; PostgreSQL lưu trạng thái giao dịch. Adapter payment mock tách khỏi nghiệp vụ để sau này thay cổng thật. Đây là modular monolith phù hợp nhóm nhỏ; trade-off là scale từng domain độc lập chưa cần thiết.
 
 Browser/PWA --HTTPS--> Next.js web --HTTPS/private service--> NestJS API --TCP 5432/private--> PostgreSQL. API xác thực, tính giá, kiểm tra tồn và quyết định trạng thái. Migration version hóa; health check kiểm tra API/DB; log không chứa token/secret.
 

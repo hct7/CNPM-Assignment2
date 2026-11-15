@@ -11,6 +11,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist
+RUN chown -R node:node /app
 USER node
 EXPOSE 3001
 CMD ["node", "dist/main.js"]

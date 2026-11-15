@@ -20,6 +20,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://brewlite:local_dev_only_change_me@db:5432/brewlite}
       JWT_SECRET: ${JWT_SECRET:-local_only_change_to_a_long_random_secret}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      PAYMENT_MOCK_MODE: ${PAYMENT_MOCK_MODE:-success}
       PORT: 3001
     depends_on:
       db:
@@ -32,7 +33,10 @@ services:
       retries: 10
     networks: [internal]
   web:
-    build: ./apps/web
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     depends_on:

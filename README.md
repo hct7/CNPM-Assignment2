@@ -1,6 +1,6 @@
 # BrewLite
 
-Monorepo học phần Công nghệ Phần mềm: Next.js web, NestJS API, PostgreSQL, Docker Compose. Repo này là nền tảng có thể chạy cho menu và một phần API checkout; chưa phải bản hoàn tất toàn bộ Task 5.
+Monorepo học phần Công nghệ Phần mềm: Next.js 16 web, NestJS 12 API, PostgreSQL, Docker Compose. Repo này là nền tảng có thể chạy cho menu và một phần API checkout; chưa phải bản hoàn tất toàn bộ Task 5.
 
 ## Chạy local
 Yêu cầu Node.js 22+ và Docker Compose. Sao chép `.env.example` thành `.env`, chạy `docker compose up --build`. Web tại http://localhost:3000; API health tại http://localhost:3001/health; menu tại http://localhost:3001/products.
