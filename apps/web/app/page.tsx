@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 
 type Product = { id: number; name: string; description: string; category: string; basePrice: number; stock: number };
+type OrderSummary = { id: string; status: string; total: number; createdAt: string };
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const icons: Record<string, string> = { Coffee: '☕', Tea: '🍵' };
 const money = (amount: number) => new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
@@ -30,15 +31,39 @@ export default function Home() {
   const [authError, setAuthError] = useState('');
   const [checkoutMessage, setCheckoutMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [orderHistory, setOrderHistory] = useState<OrderSummary[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [cartLoaded, setCartLoaded] = useState(false);
 
   useEffect(() => {
     setAccessToken(localStorage.getItem('brewlite-token') || '');
+    try {
+      const savedCart = localStorage.getItem('brewlite-cart');
+      const savedSizes = localStorage.getItem('brewlite-cart-sizes');
+      setOrderKey(localStorage.getItem('brewlite-order-key') || '');
+      setPaymentKey(localStorage.getItem('brewlite-payment-key') || '');
+      if (savedCart) setCart(JSON.parse(savedCart));
+      if (savedSizes) setCartSizes(JSON.parse(savedSizes));
+    } catch { localStorage.removeItem('brewlite-cart'); localStorage.removeItem('brewlite-cart-sizes'); }
+    setCartLoaded(true);
     fetch(`${API}/products`).then((response) => {
       if (!response.ok) throw new Error('Không tải được menu');
       return response.json();
     }).then(setProducts).catch((reason: Error) => setError(reason.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!cartLoaded) return;
+    localStorage.setItem('brewlite-cart', JSON.stringify(cart));
+    localStorage.setItem('brewlite-cart-sizes', JSON.stringify(cartSizes));
+  }, [cart, cartSizes, cartLoaded]);
+
+  useEffect(() => {
+    if (!cartLoaded) return;
+    if (orderKey) localStorage.setItem('brewlite-order-key', orderKey); else localStorage.removeItem('brewlite-order-key');
+    if (paymentKey) localStorage.setItem('brewlite-payment-key', paymentKey); else localStorage.removeItem('brewlite-payment-key');
+  }, [orderKey, paymentKey, cartLoaded]);
 
   const categories = ['Tất cả', ...Array.from(new Set(products.map((item) => item.category)))];
   const filtered = useMemo(() => products.filter((item) =>
@@ -53,6 +78,23 @@ export default function Home() {
   const add = (id: number, size = 'MEDIUM') => {
     setCart((current) => ({ ...current, [id]: (current[id] || 0) + 1 }));
     setCartSizes((current) => ({ ...current, [id]: size }));
+    setOrderKey(''); setPaymentKey('');
+  };
+  const changeQuantity = (id: number, delta: number) => {
+    const nextQuantity = (cart[id] || 0) + delta;
+    if (nextQuantity <= 0) {
+      setCart((current) => { const next = { ...current }; delete next[id]; return next; });
+      setCartSizes((current) => { const next = { ...current }; delete next[id]; return next; });
+    } else setCart((current) => ({ ...current, [id]: nextQuantity }));
+    setOrderKey(''); setPaymentKey('');
+  };
+  const loadHistory = async () => {
+    if (!accessToken) { setAuthMode('login'); setAuthModal(true); setAuthError('Đăng nhập để xem lịch sử đơn.'); return; }
+    try {
+      const response = await fetch(`${API}/orders/me`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!response.ok) throw new Error('Không tải được lịch sử đơn');
+      setOrderHistory(await response.json()); setShowHistory(true);
+    } catch (reason) { setCheckoutMessage(reason instanceof Error ? reason.message : 'Có lỗi xảy ra'); }
   };
   const checkout = async () => {
     if (!accessToken) { setAuthModal(true); setAuthError('Đăng nhập để tiếp tục đặt hàng.'); return; }
@@ -80,6 +122,8 @@ export default function Home() {
       if (payment.status === 'SUCCESS') {
         setCheckoutMessage(`Đặt hàng thành công · mã ${order.id.slice(0, 8)} · ${money(payment.total)}`);
         setCart({}); setCartSizes({}); setOrderKey(''); setPaymentKey('');
+        const historyResponse = await fetch(`${API}/orders/me`, { headers: { Authorization: `Bearer ${accessToken}` } });
+        if (historyResponse.ok) { setOrderHistory(await historyResponse.json()); setShowHistory(true); }
       } else {
         setCheckoutMessage(`Thanh toán thất bại · mã đơn ${order.id.slice(0, 8)}. Hãy thử tạo đơn mới.`);
         setOrderKey(''); setPaymentKey('');
@@ -102,7 +146,7 @@ export default function Home() {
   };
 
   return <main>
-    <header className="topbar"><a className="brand" href="#home"><span className="brand-mark">B</span> BrewLite</a><div className="top-actions">{accessToken ? <button className="account-link" onClick={() => { localStorage.removeItem('brewlite-token'); setAccessToken(''); }}>Đăng xuất</button> : <button className="account-link" onClick={() => { setAuthMode('login'); setAuthModal(true); }}>Đăng nhập</button>}<a className="cart-link" href="#cart" aria-label={`Giỏ hàng, ${count} sản phẩm`}>Giỏ hàng <span>{count}</span></a></div></header>
+    <header className="topbar"><a className="brand" href="#home"><span className="brand-mark">B</span> BrewLite</a><div className="top-actions">{accessToken && <button className="account-link" onClick={loadHistory}>Đơn hàng</button>}{accessToken ? <button className="account-link" onClick={() => { localStorage.removeItem('brewlite-token'); setAccessToken(''); }}>Đăng xuất</button> : <button className="account-link" onClick={() => { setAuthMode('login'); setAuthModal(true); }}>Đăng nhập</button>}<a className="cart-link" href="#cart" aria-label={`Giỏ hàng, ${count} sản phẩm`}>Giỏ hàng <span>{count}</span></a></div></header>
     <section className="hero" id="home"><div className="hero-copy"><p className="eyebrow">CÀ PHÊ PHA THEO CÁCH CỦA BẠN</p><h1>Một chút dịu dàng<br />cho ngày thật ngon.</h1><p>Chọn món yêu thích, tụi mình pha thật chỉn chu.</p><a href="#menu" className="primary-link">Khám phá menu <span>↓</span></a></div><div className="hero-cup" aria-hidden="true"><div className="sun"/><div className="cup">☕</div><span className="sparkle s1">✳</span><span className="sparkle s2">✦</span></div></section>
     <section className="menu-section" id="menu"><div className="section-heading"><div><p className="eyebrow">BREWLITE SELECTION</p><h2>Menu hôm nay</h2></div><label className="search"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm thức uống" aria-label="Tìm thức uống" /></label></div>
       <div className="filters" aria-label="Danh mục">{categories.map((item) => <button className={item === category ? 'filter active' : 'filter'} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div>
@@ -111,7 +155,8 @@ export default function Home() {
       {!loading && !error && filtered.length === 0 && <div className="notice">Chưa có món phù hợp. Thử từ khóa khác nhé.</div>}
       <div className="product-grid">{filtered.map((product, index) => <article className="product-card" key={product.id}><button className={`product-art art-${index % 4}`} onClick={() => setSelected(product)} aria-label={`Xem ${product.name}`}><span>{icons[product.category] || '🥤'}</span><i>{product.category}</i></button><div className="product-info"><div><p className="category">{product.category}</p><h3>{product.name}</h3><p className="description">{product.description}</p></div><div className="buy-row"><strong>{money(product.basePrice)}</strong><button className="add-button" onClick={() => add(product.id)} aria-label={`Thêm ${product.name} vào giỏ`}>+</button></div></div></article>)}</div>
     </section>
-    <section className="cart-panel" id="cart"><div><p className="eyebrow">YOUR LITTLE PICK-ME-UP</p><h2>Giỏ hàng <span className="count-pill">{count}</span></h2>{count === 0 ? <p>Giỏ đang chờ món ngon đầu tiên.</p> : <ul>{products.filter((product) => cart[product.id]).map((product) => { const size = cartSizes[product.id] || 'MEDIUM'; const unit = Math.round(product.basePrice * (size === 'LARGE' ? 1.25 : size === 'MEDIUM' ? 1.1 : 1)); return <li key={product.id}><span>{cart[product.id]} × {product.name} · {size}</span><strong>{money(unit * cart[product.id])}</strong></li>; })}</ul>}</div><div className="cart-total"><span>Tạm tính</span><strong>{money(total)}</strong><label className="payment-choice">Phương thức<select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as 'WALLET' | 'CARD')}><option value="WALLET">Ví mô phỏng</option><option value="CARD">Thẻ mô phỏng</option></select></label><button disabled={count === 0 || submitting} onClick={checkout}>{submitting ? 'Đang xử lý…' : 'Thanh toán mô phỏng'} <span>→</span></button>{checkoutMessage && <p className="checkout-message" role="status">{checkoutMessage}</p>}</div></section>
+    <section className="cart-panel" id="cart"><div><p className="eyebrow">YOUR LITTLE PICK-ME-UP</p><h2>Giỏ hàng <span className="count-pill">{count}</span></h2>{count === 0 ? <p>Giỏ đang chờ món ngon đầu tiên.</p> : <ul>{products.filter((product) => cart[product.id]).map((product) => { const size = cartSizes[product.id] || 'MEDIUM'; const unit = Math.round(product.basePrice * (size === 'LARGE' ? 1.25 : size === 'MEDIUM' ? 1.1 : 1)); return <li className="cart-item" key={product.id}><span>{product.name} · {size}<small>{money(unit)} / món</small></span><div className="quantity-control"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Giảm ${product.name}`}>−</button><b>{cart[product.id]}</b><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Tăng ${product.name}`}>+</button></div><strong>{money(unit * cart[product.id])}</strong></li>; })}</ul>}</div><div className="cart-total"><span>Tạm tính</span><strong>{money(total)}</strong><label className="payment-choice">Phương thức<select value={paymentMethod} disabled={submitting || !!paymentKey} onChange={(event) => setPaymentMethod(event.target.value as 'WALLET' | 'CARD')}><option value="WALLET">Ví mô phỏng</option><option value="CARD">Thẻ mô phỏng</option></select></label><button disabled={count === 0 || submitting} onClick={checkout}>{submitting ? 'Đang xử lý…' : 'Thanh toán mô phỏng'} <span>→</span></button>{checkoutMessage && <p className="checkout-message" role="status">{checkoutMessage}</p>}</div></section>
+    {showHistory && <section className="orders-panel" id="orders"><p className="eyebrow">YOUR BREWLITE ORDERS</p><h2>Lịch sử đơn hàng</h2>{orderHistory.length === 0 ? <p>Chưa có đơn hàng nào.</p> : <ul>{orderHistory.map((order) => <li key={order.id}><span><strong>#{order.id.slice(0, 8)}</strong><small>{new Date(order.createdAt).toLocaleString('vi-VN')}</small></span><span className="order-state">{order.status}</span><strong>{money(Number(order.total))}</strong></li>)}</ul>}</section>}
     <footer><span>BREWLITE · PHA CHẬM MỘT NHỊP</span><span>Made for your little break ☕</span></footer>
     {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelected(null)} aria-label="Đóng">×</button><p className="eyebrow">{selected.category}</p><h2 id="modal-title">{selected.name}</h2><p>{selected.description}</p><p className="modal-price">{money(selected.basePrice * (selectedSize === 'LARGE' ? 1.25 : selectedSize === 'MEDIUM' ? 1.1 : 1))}</p><label className="field-label">Kích cỡ<select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}><option value="SMALL">Small</option><option value="MEDIUM">Medium (+10%)</option><option value="LARGE">Large (+25%)</option></select></label><button className="modal-add" onClick={() => { add(selected.id, selectedSize); setSelected(null); }}>Thêm vào giỏ</button></section></div>}
     {authModal && <div className="modal-backdrop" role="presentation" onClick={() => setAuthModal(false)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setAuthModal(false)} aria-label="Đóng">×</button><p className="eyebrow">BREWLITE ACCOUNT</p><h2 id="auth-title">{authMode === 'login' ? 'Chào bạn quay lại' : 'Tạo tài khoản'}</h2><form className="auth-form" onSubmit={submitAuth}>{authMode === 'register' && <label className="field-label">Tên hiển thị<input required minLength={2} value={authName} onChange={(event) => setAuthName(event.target.value)} autoComplete="name" /></label>}<label className="field-label">Email<input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" /></label><label className="field-label">Mật khẩu<input required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} /></label>{authError && <p className="auth-error" role="alert">{authError}</p>}<button className="modal-add" type="submit">{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký'}</button></form><button className="auth-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}>{authMode === 'login' ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập'}</button></section></div>}

@@ -1,0 +1,15 @@
+@startuml
+title BrewLite - Order State Machine
+[*] --> PENDING : tạo đơn / giữ tồn
+PENDING --> PAID : payment SUCCESS
+PENDING --> PAYMENT_FAILED : payment FAILED / hoàn tồn
+PENDING --> CANCELLED : khách hủy
+PAYMENT_FAILED --> PENDING : thử lại / reserve tồn
+PAYMENT_FAILED --> CANCELLED : hủy
+PAID --> PREPARING : nhân viên nhận đơn
+PAID --> CANCELLED : quản lý hủy
+PREPARING --> READY : pha xong
+READY --> COMPLETED : khách nhận món
+COMPLETED --> [*]
+CANCELLED --> [*]
+@enduml

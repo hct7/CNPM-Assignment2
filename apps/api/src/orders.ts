@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Headers, Inject, NotFoundException, Param, Post, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Inject, NotFoundException, Param, ParseUUIDPipe, Post, BadRequestException, ConflictException, Patch, ForbiddenException } from '@nestjs/common';
 import { IsArray, IsIn, IsInt, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { bearer } from './auth';
+import { canTransition, OrderStatus } from './order-state';
 
 class OrderLineDto {
   @IsInt() @Min(1) productId!: number;
@@ -14,6 +15,7 @@ class CreateOrderDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => OrderLineDto) items!: OrderLineDto[];
 }
 class PayDto { @IsString() @IsIn(['WALLET', 'CARD']) method!: string; }
+class UpdateStatusDto { @IsString() @IsIn(['PREPARING', 'READY', 'COMPLETED', 'CANCELLED']) status!: OrderStatus; }
 
 @Controller('orders')
 export class OrdersController {
@@ -40,7 +42,7 @@ export class OrdersController {
       const lines: any[] = [];
       const remainingStock = new Map<number, number>();
       let total = 0;
-      for (const line of body.items) {
+      for (const line of [...body.items].sort((a, b) => a.productId - b.productId)) {
         const p = await client.query('SELECT id,name,base_price,stock,active FROM products WHERE id=$1 FOR UPDATE', [line.productId]);
         if (!p.rows[0]?.active) throw new NotFoundException(`Không tìm thấy sản phẩm ${line.productId}`);
         const available = remainingStock.get(line.productId) ?? Number(p.rows[0].stock);
@@ -52,13 +54,13 @@ export class OrdersController {
         total += lineTotal;
         lines.push({ ...line, name: p.rows[0].name, unitPrice, lineTotal });
       }
-      await client.query('INSERT INTO orders(id,user_id,status,total,idempotency_key,request_hash) VALUES($1,$2,$3,$4,$5,$6)', [orderId, user.sub, 'PENDING_PAYMENT', total, key, requestHash]);
+      await client.query('INSERT INTO orders(id,user_id,status,total,idempotency_key,request_hash) VALUES($1,$2,$3,$4,$5,$6)', [orderId, user.sub, 'PENDING', total, key, requestHash]);
       for (const line of lines) {
         await client.query('UPDATE products SET stock=stock-$1 WHERE id=$2', [line.quantity, line.productId]);
         await client.query('INSERT INTO order_items(order_id,product_id,product_name,quantity,size,unit_price,line_total) VALUES($1,$2,$3,$4,$5,$6,$7)', [orderId, line.productId, line.name, line.quantity, line.size, line.unitPrice, line.lineTotal]);
       }
       await client.query('COMMIT');
-      return { id: orderId, status: 'PENDING_PAYMENT', total, items: lines, replayed: false };
+      return { id: orderId, status: 'PENDING', total, items: lines, replayed: false };
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -66,7 +68,7 @@ export class OrdersController {
   }
 
   @Post(':id/pay')
-  async pay(@Headers('authorization') authorization: string, @Headers('idempotency-key') key: string, @Param('id') id: string, @Body() body: PayDto) {
+  async pay(@Headers('authorization') authorization: string, @Headers('idempotency-key') key: string, @Param('id', ParseUUIDPipe) id: string, @Body() body: PayDto) {
     const user = bearer(authorization);
     if (!key || key.length > 120) throw new BadRequestException('Idempotency-Key là bắt buộc');
     const client = await this.db.connect();
@@ -80,17 +82,26 @@ export class OrdersController {
         if (old.rows[0].method !== body.method) throw new ConflictException('Idempotency-Key đã dùng với phương thức khác');
         await client.query('COMMIT'); return { orderId: id, status: old.rows[0].status, replayed: true };
       }
-      if (order.status !== 'PENDING_PAYMENT') throw new ConflictException('Đơn hàng không ở trạng thái chờ thanh toán');
+      if (!['PENDING', 'PAYMENT_FAILED'].includes(order.status)) throw new ConflictException('Đơn hàng không ở trạng thái chờ thanh toán');
+      if (order.status === 'PAYMENT_FAILED') {
+        const lines = await client.query('SELECT product_id, SUM(quantity)::int AS quantity FROM order_items WHERE order_id=$1 GROUP BY product_id', [id]);
+        for (const line of lines.rows) {
+          const reserved = await client.query('UPDATE products SET stock=stock-$1 WHERE id=$2 AND stock >= $1 RETURNING id', [line.quantity, line.product_id]);
+          if (!reserved.rowCount) throw new ConflictException('Tồn kho đã thay đổi; vui lòng cập nhật giỏ hàng');
+        }
+        await client.query('UPDATE orders SET status=$1, updated_at=now() WHERE id=$2', ['PENDING', id]);
+      }
+      if (!canTransition(order.status as OrderStatus, 'PAID') && order.status !== 'PAYMENT_FAILED') throw new ConflictException('Chuyển trạng thái không hợp lệ');
       const success = process.env.PAYMENT_MOCK_MODE !== 'fail';
       const paymentStatus = success ? 'SUCCESS' : 'FAILED';
       await client.query('INSERT INTO payments(id,order_id,method,status,amount,idempotency_key,provider_ref) VALUES($1,$2,$3,$4,$5,$6,$7)', [randomUUID(), id, body.method, paymentStatus, order.total, key, success ? `MOCK-${randomUUID()}` : null]);
-      await client.query('UPDATE orders SET status=$1 WHERE id=$2', [success ? 'CONFIRMED' : 'PAYMENT_FAILED', id]);
+      await client.query('UPDATE orders SET status=$1, updated_at=now() WHERE id=$2', [success ? 'PAID' : 'PAYMENT_FAILED', id]);
       if (!success) await client.query(
         'UPDATE products p SET stock=p.stock+reserved.quantity FROM (SELECT product_id,SUM(quantity)::int AS quantity FROM order_items WHERE order_id=$1 GROUP BY product_id) reserved WHERE p.id=reserved.product_id',
         [id],
       );
       await client.query('COMMIT');
-      return { orderId: id, status: paymentStatus, orderStatus: success ? 'CONFIRMED' : 'PAYMENT_FAILED', total: Number(order.total), replayed: false };
+      return { orderId: id, status: paymentStatus, orderStatus: success ? 'PAID' : 'PAYMENT_FAILED', total: Number(order.total), replayed: false };
     } catch (error) { await client.query('ROLLBACK'); throw error; }
     finally { client.release(); }
   }
@@ -98,7 +109,24 @@ export class OrdersController {
   @Get('me')
   async history(@Headers('authorization') authorization: string) {
     const user = bearer(authorization);
-    const result = await this.db.query('SELECT id,status,total,created_at AS "createdAt" FROM orders WHERE user_id=$1 ORDER BY created_at DESC', [user.sub]);
+    const result = await this.db.query('SELECT id,status,total,created_at AS "createdAt",updated_at AS "updatedAt" FROM orders WHERE user_id=$1 ORDER BY created_at DESC', [user.sub]);
     return result.rows;
+  }
+
+  @Patch(':id/status')
+  async updateStatus(@Headers('authorization') authorization: string, @Param('id', ParseUUIDPipe) id: string, @Body() body: UpdateStatusDto) {
+    const user = bearer(authorization);
+    if (!['STAFF', 'MANAGER'].includes(user.role)) throw new ForbiddenException('Chỉ nhân viên mới được cập nhật trạng thái');
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN');
+      const current = await client.query('SELECT status FROM orders WHERE id=$1 FOR UPDATE', [id]);
+      if (!current.rows[0]) throw new NotFoundException('Không tìm thấy đơn hàng');
+      if (!canTransition(current.rows[0].status as OrderStatus, body.status)) throw new ConflictException(`Chuyển trạng thái không hợp lệ: ${current.rows[0].status} -> ${body.status}`);
+      await client.query('UPDATE orders SET status=$1, updated_at=now() WHERE id=$2', [body.status, id]);
+      await client.query('COMMIT');
+      return { id, status: body.status };
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+    finally { client.release(); }
   }
 }

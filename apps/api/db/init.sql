@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS orders (
   idempotency_key TEXT NOT NULL,
   request_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, idempotency_key)
 );
 CREATE TABLE IF NOT EXISTS order_items (

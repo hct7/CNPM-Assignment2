@@ -9,7 +9,7 @@
 | FR-05, FR-11, NFR-04 | UC-01 đặt đơn | Activity-01, Sequence-01, Class Order | POST /orders + web checkout | Chưa có integration test |
 | FR-06, NFR-08 | UC-01 thanh toán | Sequence-01, Class Payment | POST /orders/:id/pay + mock Wallet/Card | Chưa có integration test |
 | FR-07 | US-05 lịch sử | Class Order | GET /orders/me (API only) | Chưa có integration test |
-| FR-08 | US-06 cập nhật trạng thái | Class Order | Chưa triển khai | Chưa có test |
+| FR-08 | US-06 cập nhật trạng thái | Activity-01, Order State Machine | PATCH /orders/:id/status, vai trò STAFF/MANAGER | Unit state test; chưa có API integration test |
 | FR-09 | US-07 promotion/loyalty | Class Promotion/LoyaltyTransaction | Domain planned | deferred |
 | NFR-01, NFR-07 | US-01 | Architecture overview | Next.js responsive | manual viewport review |
 | NFR-03, NFR-05 | vận hành | Deployment-01 | GET /health, Compose | smoke test |

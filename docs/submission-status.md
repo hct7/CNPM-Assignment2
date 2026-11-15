@@ -6,7 +6,7 @@
 | 2 - Mô hình hóa | Sơ đồ nguồn đã tạo | Activity, sequence, class, use-case; sequence có SVG render; chưa có kiểm tra render PlantUML tự động |
 | 3 - Kiến trúc | Thiết kế mục tiêu | Overview, 2 ADR, deployment diagram; provider thực tế còn TBD |
 | 4 - Sprint 1 | Nền tảng local đã có | Git local (2 commit), Next.js/NestJS/PostgreSQL, seed, GET products, health, menu mobile-first, CI workflow; chưa có remote GitHub/PR/branch protection và CI chưa chạy |
-| 5 - Sprint 2 + delivery | Chưa hoàn tất | API auth/order/payment mock và checkout UI cơ bản đã có; thiếu topping, UI lịch sử/tracking, staff status, migration runner, integration/E2E, CD, production URL, release, demo và retrospective |
+| 5 - Sprint 2 + delivery | Chưa hoàn tất | API auth/order/payment mock, order state machine, UI checkout/lịch sử đã có; thiếu topping/loyalty, UI nhân viên, service worker/offline, migration runner, integration/E2E, CD, production URL, release, demo và retrospective |
 
 ## Cần nhóm cung cấp hoặc thực hiện
 

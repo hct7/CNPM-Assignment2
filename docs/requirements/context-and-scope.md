@@ -6,9 +6,10 @@ BrewLite là ứng dụng đặt đồ uống cho một cửa hàng cà phê. Kh
 ## Stakeholder
 | Stakeholder | Mục tiêu / kỳ vọng | Cách xác nhận |
 |---|---|---|
-| Khách hàng | Tìm đồ uống, tùy chỉnh, đặt đơn và biết kết quả | Kiểm thử luồng menu đến xác nhận |
-| Nhân viên quầy | Nhìn thấy đơn và cập nhật trạng thái chính xác | Kiểm thử danh sách và chuyển trạng thái |
-| Quản lý cửa hàng | Quản lý sản phẩm, giá, tồn kho và xem lịch sử | Kiểm thử quyền quản trị và dữ liệu |
+| Khách hàng | Đặt đồ uống không tiền mặt trong vài thao tác, chọn size/topping và theo dõi đơn | Kiểm thử luồng menu đến xác nhận |
+| Nhân viên quầy / Barista | Nhận đơn và cập nhật trạng thái pha chế; chức năng vận hành là mở rộng | Kiểm thử API chuyển trạng thái khi cấp vai trò STAFF |
+| Quản lý cửa hàng / Product Owner | Ưu tiên backlog, nghiệm thu increment, duy trì sản phẩm và dữ liệu | Sprint Review, kiểm tra AC và quản trị |
+| Scrum Master | Hỗ trợ sự kiện Scrum và tháo gỡ trở ngại nhóm | Sprint Planning/Daily/Review/Retro |
 | Giảng viên/người nghiệm thu | Clone, chạy, kiểm tra truy vết và xem demo | README, CI, smoke test và demo |
 | Nhóm phát triển | Phát triển có kiểm soát, tái tạo môi trường | PR, CI, migration, review |
 | Đơn vị thanh toán | Giao tiếp qua giao diện tích hợp an toàn | Adapter mô phỏng; không kết nối nhà cung cấp thật |

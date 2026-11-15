@@ -9,9 +9,9 @@
 | FR-03 | Quản lý giỏ hàng | Must | Thêm/sửa/xóa; tổng tiền đúng theo số lượng/tùy chọn |
 | FR-04 | Đăng ký/đăng nhập | Must | JWT hợp lệ; mật khẩu băm; sai thông tin bị từ chối |
 | FR-05 | Tạo đơn | Must | POST /orders cần JWT và Idempotency-Key; lưu snapshot giá/items |
-| FR-06 | Thanh toán mô phỏng | Must | SUCCESS/FAILED; retry cùng key không tạo payment trùng |
-| FR-07 | Xem xác nhận và lịch sử đơn | Must | Chỉ xem đơn của mình; trạng thái/tổng tiền nhất quán |
-| FR-08 | Nhân viên cập nhật trạng thái | Should | Chỉ STAFF/ADMIN chuyển trạng thái hợp lệ, có timestamp |
+| FR-06 | Thanh toán không tiền mặt mô phỏng bằng Ví/Thẻ | Must | Với giỏ có ít nhất 1 món, chọn Ví/Thẻ; thành công hiển thị mã đơn + PAID; thất bại giữ giỏ và ghi PAYMENT_FAILED; retry cùng key không tạo payment trùng |
+| FR-07 | Xem xác nhận và lịch sử đơn | Must | Chỉ xem đơn của mình; mã đơn, trạng thái/tổng tiền nhất quán; lịch sử có trạng thái cập nhật |
+| FR-08 | Nhân viên cập nhật trạng thái | Should | Chỉ STAFF/MANAGER chuyển trạng thái hợp lệ: PAID → PREPARING → READY → COMPLETED; trạng thái cuối không chuyển tiếp |
 | FR-09 | Promotion và loyalty | Could | Domain mô hình hóa; vận hành có thể để sprint sau |
 | FR-10 | Quản lý danh mục | Should | Quản trị viên sửa/ẩn; giá không âm |
 | FR-11 | Không đặt khi hết hàng | Must | Transaction từ chối nguyên tử, không trừ tồn một phần |

@@ -17,7 +17,7 @@ alt hết hàng hoặc dữ liệu sai
 else đủ hàng
  API -> DB: Tạo Order + OrderItems; trừ tồn; COMMIT
  DB --> API: orderId, total
- API --> UI: 201 Order PENDING_PAYMENT
+ API --> UI: 201 Order PENDING
  UI -> API: POST /orders/{id}/pay [JWT, Idempotency-Key]
  API -> DB: Tra cứu idempotency/payment
  alt đã xử lý cùng key
@@ -26,7 +26,7 @@ else đủ hàng
   API -> Pay: chargeMock(orderId,total,key)
   alt thanh toán thành công
    Pay --> API: SUCCESS + providerRef
-   API -> DB: Ghi Payment SUCCESS; Order CONFIRMED
+   API -> DB: Ghi Payment SUCCESS; Order PAID
   else thanh toán thất bại
    Pay --> API: FAILED
    API -> DB: Ghi FAILED; cập nhật Order; hoàn tồn một lần

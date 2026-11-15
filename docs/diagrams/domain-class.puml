@@ -8,7 +8,7 @@ class Payment {+id: UUID;+method: PaymentMethod;+status: PaymentStatus;+amount: 
 class Promotion {+id: UUID;+code: string;+discountType: DiscountType;+value: int;+active: bool}
 class LoyaltyTransaction {+id: UUID;+pointsDelta: int;+reason: string;+createdAt: datetime}
 enum UserRole { CUSTOMER; STAFF; MANAGER }
-enum OrderStatus { PENDING_PAYMENT; CONFIRMED; PREPARING; READY; COMPLETED; PAYMENT_FAILED; CANCELLED }
+enum OrderStatus { PENDING; PAID; PREPARING; READY; COMPLETED; PAYMENT_FAILED; CANCELLED }
 enum PaymentStatus { PENDING; SUCCESS; FAILED; REFUNDED }
 enum PaymentMethod { WALLET; CARD }
 enum DiscountType { PERCENT; FIXED }
