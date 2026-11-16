@@ -59,7 +59,7 @@ export const MagneticScatterText: React.FC<MagneticScatterTextProps> = ({
         return (
           <motion.span
             key={index}
-            className="inline-block font-sans font-bold text-inherit"
+            className="inline-block text-inherit"
             initial="hidden"
             animate={controls}
             variants={{

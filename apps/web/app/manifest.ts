@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Xem menu đồ uống BrewLite.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#080506',
-    theme_color: '#080506',
+    background_color: '#000000',
+    theme_color: '#000000',
     icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
   };
 }

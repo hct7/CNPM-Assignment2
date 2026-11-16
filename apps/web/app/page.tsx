@@ -4,24 +4,21 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import dynamic from 'next/dynamic';
 import { calculateCartTotal, calculateUnitPrice, TOPPING_OPTIONS } from '../lib/cart-utils.mjs';
-import LiquidButton from '@/components/ui/liquid-button';
 import { AnimatedTabs } from '@/components/ui/animated-tab';
 import WordMagnet from '@/components/ui/word-magnet';
 import { VaporSmokeText } from '@/components/ui/vapor-smoke-text';
 import LoadingSpinner from '@/components/ui/loading-spinner';
-import RetroPixelButton from '@/components/ui/retro-pixel-button';
 import { LiquidTooltip } from '@/components/ui/liquid-tooltip';
 import { MagneticScatterText } from '@/components/ui/magnetic-scatter-text';
 import SoundText from '@/components/ui/sound-text';
 import { Book3D } from '@/components/ui/book-3d';
 import ToastTabs from '@/components/ui/toast-tabs';
-import FloatingNavigation from '@/components/ui/floating-navigation';
 import { cn } from '@/lib/utils';
 
 const LiquidWave = dynamic(() => import('@/components/ui/liquid-wave'), {
   ssr: false,
   loading: () => (
-    <div className="grid h-full w-full place-items-center text-[10px] uppercase tracking-[0.32em] text-muted/70">
+    <div className="grid h-full w-full place-items-center font-mono text-[10px] uppercase tracking-[0.28em] text-cream/40">
       Đang khuấy…
     </div>
   ),
@@ -32,16 +29,16 @@ type OrderSummary = { id: string; status: string; total: number; createdAt: stri
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const icons: Record<string, string> = { Coffee: '☕', Tea: '🍵' };
 const artStyles = [
-  'from-[#2b1b12] via-[#1a110c] to-[#0c0806]',
-  'from-[#15211b] via-[#101a15] to-[#0c0806]',
-  'from-[#261a10] via-[#1d1309] to-[#0c0806]',
-  'from-[#1b1724] via-[#141020] to-[#0c0806]',
+  { media: 'from-[#2a1409] via-[#150c07] to-[#080504]', glow: 'rgba(252,76,1,0.45)' },
+  { media: 'from-[#24180a] via-[#14100a] to-[#080604]', glow: 'rgba(255,200,61,0.32)' },
+  { media: 'from-[#0c211a] via-[#0a1510] to-[#050a07]', glow: 'rgba(126,231,135,0.3)' },
+  { media: 'from-[#1a1208] via-[#100c07] to-[#060504]', glow: 'rgba(255,138,77,0.35)' },
 ];
 const money = (amount: number) => new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
 
 const avatar = (emoji: string) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#1d1611"/><text x="32" y="43" font-size="30" text-anchor="middle">${emoji}</text></svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="#1a1a1a"/><text x="32" y="43" font-size="30" text-anchor="middle">${emoji}</text></svg>`,
   )}`;
 
 const testimonials = [
@@ -58,28 +55,31 @@ const bookPages = [
   { title: 'Pha chậm một nhịp', content: 'Chúng tôi không cố làm nhanh hơn. Chỉ cố làm đúng, để bạn có một khoảng nghỉ thật vừa vặn.' },
 ];
 
-const IconHome = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-    <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+const BeanMark = ({ className = 'size-5' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <ellipse cx="12" cy="12" rx="6.2" ry="8.6" transform="rotate(38 12 12)" fill="currentColor" />
+    <path d="M8.2 6.6c2.7 2.2 3.6 8.4.9 10.8" fill="none" stroke="#000" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
-const IconCup = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-    <path d="M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z" />
-    <path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17" />
-    <path d="M6 21h12" />
+
+const ArrowUpRight = ({ className = 'size-4' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M7 17 17 7" />
+    <path d="M9 7h8v8" />
   </svg>
 );
-const IconBag = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-    <path d="M4 8h16l-1.2 11a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8z" />
-    <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+
+const BagIcon = ({ className = 'size-4' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M5 8h14l-1 11a2 2 0 0 1-2 1.8H8a2 2 0 0 1-2-1.8z" />
+    <path d="M9 8V6.5a3 3 0 0 1 6 0V8" />
   </svg>
 );
-const IconUser = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-    <circle cx="12" cy="8" r="3.6" />
-    <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+
+const SearchIcon = ({ className = 'size-4' }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m16 16 4 4" />
   </svg>
 );
 
@@ -223,271 +223,380 @@ export default function Home() {
     } catch (reason) { setAuthError(reason instanceof Error ? reason.message : 'Có lỗi xảy ra'); }
   };
 
-  const dockItems = [
-    { id: 'home', label: 'Trang chủ', icon: <IconHome />, onSelect: () => document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' }) },
-    { id: 'menu', label: 'Menu', icon: <IconCup />, onSelect: () => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' }) },
-    { id: 'cart', label: 'Giỏ hàng', icon: <IconBag />, onSelect: () => document.getElementById('cart')?.scrollIntoView({ behavior: 'smooth' }) },
-    {
-      id: 'account',
-      label: accessToken ? 'Đơn hàng' : 'Tài khoản',
-      icon: <IconUser />,
-      onSelect: () => {
-        if (accessToken) void loadHistory();
-        else { setAuthMode('login'); setAuthModal(true); }
-      },
-    },
-  ];
-
   return <main className="relative min-h-screen overflow-x-hidden bg-ink text-cream">
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10">
-      <div className="absolute -top-48 left-1/2 h-[40rem] w-[40rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(226,161,92,0.20),transparent_62%)] blur-3xl" />
-      <div className="absolute -bottom-40 right-0 h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(circle,rgba(143,214,169,0.14),transparent_70%)] blur-3xl" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),transparent_28%,transparent_72%,rgba(0,0,0,0.5))]" />
-    </div>
-
-    <header className="sticky top-3 z-40 mx-auto w-full max-w-6xl px-4">
-      <div className="glass-panel flex items-center justify-between gap-3 rounded-full px-3 py-2 sm:px-4">
-        <a className="flex shrink-0 items-center gap-2.5" href="#home" aria-label="BrewLite">
-          <span aria-hidden="true" className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-copper to-copper-dark font-serif text-lg font-semibold text-ink shadow-[0_0_26px_-6px] shadow-copper/70">B</span>
-          <span className="font-serif text-base tracking-tight text-cream sm:text-lg">BrewLite</span>
+    <header className="sticky top-4 z-40 px-4">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-2 rounded-full bg-surface-2/85 px-2 shadow-edge backdrop-blur-xl">
+        <a className="flex shrink-0 items-center gap-2 rounded-full pl-2 pr-3 py-1" href="#home" aria-label="BrewLite">
+          <BeanMark className="size-[22px] text-accent" />
+          <span className="font-rund text-[15px] font-semibold tracking-[-0.02em] text-cream">BrewLite</span>
         </a>
-        <div className="hidden md:block">
-          <FloatingNavigation items={dockItems} className="relative bottom-auto left-auto translate-x-0" />
-        </div>
-        <div className="flex items-center gap-1 text-xs">
-          {accessToken && <button className="ghost-link" onClick={loadHistory}>Đơn hàng</button>}
+
+        <nav aria-label="Điều hướng chính" className="hidden items-center gap-1 md:flex">
+          <a className="nav-link px-3" href="#menu">Menu</a>
+          <span aria-hidden="true" className="h-3.5 w-px bg-white/10" />
+          <a className="nav-link px-3" href="#story">Câu chuyện</a>
+          <span aria-hidden="true" className="h-3.5 w-px bg-white/10" />
+          <a className="nav-link px-3" href="#cart">Giỏ hàng</a>
+          <span aria-hidden="true" className="h-3.5 w-px bg-white/10" />
+          <a className="nav-link px-3" href="#voices">Khách</a>
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-1">
+          {accessToken && <button className="nav-link px-2 sm:px-3" onClick={loadHistory}>Đơn hàng</button>}
           {accessToken
-            ? <button className="ghost-link" onClick={() => { localStorage.removeItem('brewlite-token'); setAccessToken(''); }}>Đăng xuất</button>
-            : <button className="ghost-link" onClick={() => { setAuthMode('login'); setAuthModal(true); }}>Đăng nhập</button>}
-          <LiquidTooltip text={`Giỏ hàng · ${count} món`} placement="bottom" className="ml-1">
-            <a className="inline-flex items-center gap-2 rounded-full border border-copper/30 bg-copper/10 px-3 py-2 text-[11px] font-semibold text-copper transition hover:border-copper/60 hover:bg-copper/15" href="#cart" aria-label={`Giỏ hàng, ${count} sản phẩm`}>
-              <span aria-hidden="true">🛍</span>
-              <span aria-hidden="true" className="tabular-nums">{count}</span>
+            ? <button className="nav-link hidden px-3 sm:inline-flex" onClick={() => { localStorage.removeItem('brewlite-token'); setAccessToken(''); }}>Đăng xuất</button>
+            : <button className="btn btn-secondary btn-sm" onClick={() => { setAuthMode('login'); setAuthModal(true); }}>Đăng nhập</button>}
+          <LiquidTooltip text={`Giỏ hàng · ${count} món`} placement="bottom">
+            <a className="btn btn-secondary btn-sm gap-2 px-2.5" href="#cart" aria-label={`Giỏ hàng, ${count} sản phẩm`}>
+              <BagIcon className="size-[15px] text-cream/70" />
+              <span className="font-mono text-[11px] tabular-nums text-cream/80">{count}</span>
             </a>
           </LiquidTooltip>
         </div>
       </div>
     </header>
 
-    <section id="home" className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 pt-16 pb-16 md:grid-cols-[1.05fr_0.95fr] md:pt-24 md:pb-24">
-      <div className="relative z-10">
-        <MagneticScatterText text="Cà phê pha theo cách của bạn" className="eyebrow" />
-        <h1 className="mt-5 font-serif text-[clamp(2.2rem,4.4vw,3.5rem)] leading-[1.06] tracking-tight">
-          <WordMagnet text="Một chút dịu dàng" className="justify-start gap-x-[0.14em] gap-y-0" textColor="#f7f0e6" font={{ fontFamily: 'var(--font-serif)', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: '1.1em' }} radius={100} force={0.28} />
-          <WordMagnet text="cho ngày thật ngon." className="justify-start gap-x-[0.14em]" textColor="#e2a15c" font={{ fontFamily: 'var(--font-serif)', fontWeight: 600, fontStyle: 'italic', letterSpacing: '-0.02em', lineHeight: '1.1em' }} radius={100} force={0.28} />
+    <section id="home" className="relative scroll-mt-24 overflow-hidden px-5 pb-16 pt-16 md:pb-24 md:pt-20">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+        <div className="dot-grid absolute inset-x-0 top-0 h-[34rem] opacity-40 [mask-image:radial-gradient(circle_at_50%_18%,black,transparent_70%)]" />
+        <div className="absolute left-1/2 top-[-16rem] h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(252,76,1,0.2),transparent_66%)] blur-3xl" />
+      </div>
+
+      <div className="mx-auto max-w-3xl text-center">
+        <div className="chip">
+          <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
+          <SoundText text="Pha chậm một nhịp" className="font-mono text-[10px] uppercase tracking-[0.2em] text-cream/60" basePitch={300} />
+        </div>
+
+        <h1 className="mt-7 font-rund font-bold tracking-[-0.035em]">
+          <WordMagnet
+            text="Một chút dịu dàng"
+            className="justify-center gap-x-[0.18em] gap-y-0"
+            textColor="#ededed"
+            font={{ fontFamily: 'var(--font-open-runde)', fontSize: 'clamp(2.45rem, 6.2vw, 4.35rem)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: '1.03em' }}
+            radius={90}
+            force={0.24}
+          />
+          <WordMagnet
+            text="cho ngày thật ngon."
+            className="justify-center gap-x-[0.18em] gap-y-0"
+            textColor="#fc4c01"
+            font={{ fontFamily: 'var(--font-open-runde)', fontSize: 'clamp(2.45rem, 6.2vw, 4.35rem)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: '1.03em' }}
+            radius={90}
+            force={0.24}
+          />
         </h1>
-        <p className="mt-6 max-w-md text-sm leading-relaxed text-muted">Chọn món yêu thích, tụi mình pha thật chỉn chu — hạt rang mới mỗi sáng, đá trong veo, và một chút dịu dàng dành riêng bạn.</p>
-        <div className="mt-8 flex flex-wrap items-center gap-4">
-          <LiquidButton text="Khám phá menu" className="p-0" backgroundColor="bg-gradient-to-br from-copper to-copper-dark" textColor="text-ink" onClick={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })} />
-          <a className="ghost-link border border-white/10 px-5 py-3 text-xs text-cream/80" href="#cart">Giỏ của bạn · {count}</a>
-        </div>
-      </div>
 
-      <div className="relative mx-auto w-full max-w-md">
-        <div aria-hidden="true" className="absolute -inset-6 rounded-[2.5rem] bg-[radial-gradient(circle_at_50%_45%,rgba(226,161,92,0.25),transparent_70%)] blur-2xl" />
-        <div className="relative h-[19rem] overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-b from-surface-2 to-ink shadow-[0_50px_140px_-70px_rgba(226,161,92,0.9)] md:h-[24rem]">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_58%_42%,rgba(226,161,92,0.4),rgba(255,138,61,0.12)_45%,transparent_70%)] blur-xl" />
-          <LiquidWave color1="#e2a15c" color2="#ff8a3d" color3="#f2c08a" resolution={0.55} autoSpeed={0.8} autoIntensity={3} autoResumeDelay={400} autoRampDuration={0.3} takeoverDuration={0.2} className="h-full w-full" />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_130%,rgba(8,5,6,0.9),transparent_62%)]" />
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-5">
-            <span className="text-[10px] uppercase tracking-[0.34em] text-cream/70">BrewLite signature</span>
-            <span className="text-[10px] uppercase tracking-[0.34em] text-copper">01</span>
-          </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/70 to-transparent p-5 pt-16">
-            <VaporSmokeText text="Khuấy nhẹ" className="text-[10px] uppercase tracking-[0.5em] text-cream/70" />
-            <p className="mt-2 font-serif text-2xl text-cream">Chạm vào sóng</p>
-          </div>
-        </div>
-        <div className="pointer-events-none absolute -right-4 -top-6 hidden rounded-2xl border border-white/10 bg-ink/80 px-3 py-2 text-[10px] uppercase tracking-[0.24em] text-cream/70 backdrop-blur md:block">24°C · Sáng</div>
-      </div>
-    </section>
+        <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-muted">
+          Chọn món yêu thích, tụi mình pha thật chỉn chu — hạt rang mới mỗi sáng, đá trong veo và một chút dịu dàng dành riêng bạn.
+        </p>
 
-    <section id="menu" className="relative border-y border-white/5 bg-ink-soft/70 py-16 md:py-20">
-      <div className="mx-auto max-w-6xl px-5">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <SoundText text="BrewLite selection" className="eyebrow" basePitch={260} />
-            <h2 className="mt-3 font-serif text-4xl tracking-tight md:text-5xl">Menu hôm nay</h2>
-          </div>
-          <label className="flex h-11 w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 text-muted backdrop-blur transition focus-within:border-copper/50 focus-within:bg-white/[0.06] md:w-72">
-            <span aria-hidden="true" className="text-sm">⌕</span>
-            <input className="h-full w-full bg-transparent text-sm text-cream placeholder:text-muted/70 focus:outline-none" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm thức uống" aria-label="Tìm thức uống" />
-          </label>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <button className="btn btn-primary w-full sm:w-auto" onClick={() => document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' })}>
+            Khám phá menu
+            <ArrowUpRight className="size-[15px]" />
+          </button>
+          <a className="btn btn-secondary w-full sm:w-auto" href="#cart">
+            Giỏ của bạn
+            <span className="font-mono text-[11px] tabular-nums text-cream/50">· {count}</span>
+          </a>
         </div>
 
-        <div className="mt-6 flex justify-start overflow-x-auto pb-2">
-          <AnimatedTabs tabs={categoryTabs} activeTab={category} onChange={setCategory} />
-        </div>
-
-        {loading && <div className="mt-10 flex items-center justify-center rounded-3xl border border-white/8 bg-surface/50 py-14"><LoadingSpinner text="Đang pha menu cho bạn…" size="md" /></div>}
-        {!loading && error && <div className="mt-10 rounded-3xl border border-red-400/25 bg-red-500/10 px-6 py-5 text-sm text-red-200" role="alert">{error}. <button className="underline underline-offset-4" onClick={() => location.reload()}>Thử lại</button></div>}
-        {!loading && !error && filtered.length === 0 && <div className="mt-10 rounded-3xl border border-white/8 bg-surface/50 px-6 py-10 text-center text-sm text-muted">Chưa có món phù hợp. Thử từ khóa khác nhé.</div>}
-
-        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {filtered.map((product, index) => <article className="group relative flex flex-col overflow-hidden rounded-3xl border border-white/8 bg-surface/70 backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-copper/40 hover:shadow-[0_30px_70px_-40px_rgba(226,161,92,0.75)]" key={product.id}>
-            <button className={cn('relative flex h-36 w-full items-center justify-center overflow-hidden bg-gradient-to-br sm:h-44', artStyles[index % 4])} onClick={() => { setSelected(product); setSelectedSize('MEDIUM'); setSelectedToppings([]); }} aria-label={`Xem ${product.name}`}>
-              <span aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_30%_15%,rgba(255,255,255,0.16),transparent_58%)] opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
-              <span aria-hidden="true" className="text-5xl transition-transform duration-500 group-hover:scale-110 sm:text-6xl">{icons[product.category] || '🥤'}</span>
-              <i className="absolute right-3 top-3 rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[9px] font-semibold uppercase not-italic tracking-[0.16em] text-cream/70">{product.category}</i>
-            </button>
-            <div className="flex flex-1 flex-col gap-3 p-4">
-              <div className="flex-1">
-                <h3 className="font-serif text-lg leading-snug text-cream">{product.name}</h3>
-                <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted">{product.description}</p>
-              </div>
-              <div className="flex items-center justify-between">
-                <strong className="text-sm font-semibold text-copper">{money(product.basePrice)}</strong>
-                <LiquidTooltip text="Thêm nhanh" placement="top">
-                  <button className="grid size-9 place-items-center rounded-full border border-copper/30 bg-copper/10 text-lg leading-none text-copper transition hover:scale-105 hover:border-copper/70 hover:bg-copper hover:text-ink" onClick={() => add(product.id)} aria-label={`Thêm ${product.name} vào giỏ`}>+</button>
-                </LiquidTooltip>
-              </div>
+        <dl className="mx-auto mt-10 flex max-w-md items-center justify-center divide-x divide-white/10">
+          {[
+            { label: 'Món hôm nay', value: products.length ? String(products.length) : '—' },
+            { label: 'Trong giỏ', value: String(count) },
+            { label: 'Nhiệt độ', value: '24°C' },
+          ].map((item) => (
+            <div className="px-6 text-center sm:px-8" key={item.label}>
+              <dt className="font-mono text-[9px] uppercase tracking-[0.2em] text-cream/35">{item.label}</dt>
+              <dd className="mt-1 font-rund text-lg font-semibold text-cream">{item.value}</dd>
             </div>
-          </article>)}
-        </div>
+          ))}
+        </dl>
       </div>
-    </section>
 
-    <section id="story" className="relative mx-auto grid max-w-6xl items-center gap-10 px-5 py-16 md:grid-cols-[0.85fr_1.15fr] md:gap-16 md:py-20">
-      <div className="relative flex justify-center">
-        <div aria-hidden="true" className="absolute inset-x-6 bottom-4 h-24 rounded-full bg-copper/20 blur-3xl" />
-        <Book3D src="/book-cover.svg" width={232} height={336} pages={bookPages} />
-      </div>
-      <div>
-        <p className="eyebrow">Chuyện của quán</p>
-        <h2 className="mt-3 font-serif text-4xl leading-tight tracking-tight md:text-5xl">Một cuốn sổ, và rất nhiều mùi hương.</h2>
-        <p className="mt-5 max-w-md text-sm leading-relaxed text-muted">Từng mẻ hạt, từng viên đá, từng món topping đều được ghi lại trong cuốn sổ nhỏ của quán. Rê chuột lên bìa để lật thử vài trang — biết đâu bạn tìm được món của mình.</p>
-        <div className="mt-7 flex items-center gap-4">
-          <SoundText text="Chạm thử" className="font-serif text-2xl text-copper" basePitch={320} />
-          <span aria-hidden="true" className="h-px flex-1 bg-gradient-to-r from-copper/50 to-transparent" />
-        </div>
-        <p className="mt-3 text-[10px] uppercase tracking-[0.26em] text-muted/70">Hover để lật trang · click để gấp lại</p>
-      </div>
-    </section>
-
-    <section id="cart" className="mx-auto max-w-6xl px-5 py-16 md:py-20">
-      <div className="grid gap-6 lg:grid-cols-[1.55fr_1fr]">
-        <div className="rounded-3xl border border-white/8 bg-surface/60 p-6 backdrop-blur md:p-8">
-          <p className="eyebrow">Your little pick-me-up</p>
-          <h2 className="mt-2 flex items-center gap-3 font-serif text-3xl tracking-tight md:text-4xl">Giỏ hàng <span className="rounded-full border border-copper/30 bg-copper/10 px-3 py-1 text-xs font-semibold text-copper">{count}</span></h2>
-          {count === 0
-            ? <p className="mt-6 text-sm text-muted">Giỏ đang chờ món ngon đầu tiên.</p>
-            : <ul className="mt-6 divide-y divide-white/8">{products.filter((product) => cart[product.id]).map((product) => { const size = cartSizes[product.id] || 'MEDIUM'; const toppings = cartToppings[product.id] || []; const unit = calculateUnitPrice(product.basePrice, size, toppings); return <li className="flex flex-wrap items-center gap-4 py-4" key={product.id}>
-              <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-xl" aria-hidden="true">{icons[product.category] || '🥤'}</span>
-              <span className="min-w-[9rem] flex-1 text-sm text-cream">
-                {product.name} · {size}
-                <small className="mt-1 block text-[10px] leading-relaxed text-muted">{toppings.map((id) => TOPPING_OPTIONS.find((option) => option.id === id)?.name).filter(Boolean).join(', ') || 'Không topping'} · {money(unit)} / món</small>
-              </span>
-              <span className="flex items-center gap-2">
-                <button className="grid size-7 place-items-center rounded-full border border-white/12 text-sm text-cream/80 transition hover:border-copper/60 hover:text-copper" onClick={() => changeQuantity(product.id, -1)} aria-label={`Giảm ${product.name}`}>−</button>
-                <b className="min-w-5 text-center text-xs text-cream">{cart[product.id]}</b>
-                <button className="grid size-7 place-items-center rounded-full border border-white/12 text-sm text-cream/80 transition hover:border-copper/60 hover:text-copper" onClick={() => changeQuantity(product.id, 1)} aria-label={`Tăng ${product.name}`}>+</button>
-              </span>
-              <strong className="w-20 text-right text-sm text-copper">{money(unit * cart[product.id])}</strong>
-            </li>; })}</ul>}
-        </div>
-
-        <aside className="flex h-fit flex-col gap-4 rounded-3xl border border-white/10 bg-gradient-to-b from-surface-2 to-surface p-6 backdrop-blur lg:sticky lg:top-24">
-          <div className="flex items-baseline justify-between">
-            <span className="text-xs uppercase tracking-[0.2em] text-muted">Tạm tính</span>
-            <strong className="font-serif text-3xl text-cream">{money(total)}</strong>
+      <div className="mx-auto mt-14 w-full max-w-5xl">
+        <div className="surface-card p-2 shadow-[0_70px_180px_-90px_rgba(252,76,1,0.6)]">
+          <div className="relative h-[19rem] overflow-hidden rounded-[26px] bg-black md:h-[26rem]">
+            <LiquidWave
+              color1="#ff6a1a"
+              color2="#ffae63"
+              color3="#ffe6c4"
+              resolution={0.6}
+              autoSpeed={0.9}
+              autoIntensity={6}
+              autoResumeDelay={300}
+              autoRampDuration={0.3}
+              takeoverDuration={0.2}
+              className="h-full w-full"
+            />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_125%,rgba(0,0,0,0.92),transparent_60%)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-cream/55">BrewLite signature</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-cream/55">01</span>
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-5 pt-20">
+              <VaporSmokeText text="Khuấy nhẹ" className="justify-start font-mono text-[10px] uppercase tracking-[0.4em] text-cream/60" />
+              <p className="mt-2 font-rund text-2xl font-semibold tracking-[-0.02em] text-cream">Chạm vào sóng</p>
+            </div>
           </div>
-          <label className="grid gap-2 text-[11px] text-muted">Phương thức
-            <select className="field" value={paymentMethod} disabled={submitting || !!paymentKey} onChange={(event) => setPaymentMethod(event.target.value as 'WALLET' | 'CARD')}>
+        </div>
+        <div className="mt-3 flex items-center justify-between px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-cream/30">
+          <span>Pha chậm · Rang mộc · Đá trong</span>
+          <span className="hidden sm:inline">Kéo chuột trên mặt nước</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="menu" className="relative scroll-mt-24 border-t border-white/5 bg-ink-soft py-20">
+      <div className="mx-auto max-w-6xl px-5">
+        <div className="mx-auto max-w-2xl text-center">
+          <SoundText text="BrewLite selection" className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent" basePitch={260} />
+          <h2 className="mt-3 font-rund text-4xl font-bold tracking-[-0.03em] md:text-[3.1rem] md:leading-[1.05]">Menu hôm nay</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">Bốn món quen, pha mỗi ngày. Chọn size và topping ở bước tiếp theo.</p>
+        </div>
+
+        <div className="mt-9 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <label className="flex h-12 w-full items-center gap-2.5 rounded-[14px] bg-surface-2 px-4 shadow-edge transition focus-within:ring-2 focus-within:ring-accent/30 md:max-w-xs">
+            <SearchIcon className="size-4 shrink-0 text-cream/35" />
+            <input
+              className="h-full w-full bg-transparent text-sm text-cream placeholder:text-cream/35 focus:outline-none"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Tìm thức uống"
+              aria-label="Tìm thức uống"
+            />
+          </label>
+          <div className="overflow-x-auto pb-1">
+            <AnimatedTabs tabs={categoryTabs} activeTab={category} onChange={setCategory} className="w-fit shadow-none" />
+          </div>
+        </div>
+
+        {loading && <div className="mt-10 grid place-items-center rounded-[32px] bg-surface-2 py-16 shadow-edge"><LoadingSpinner text="Đang pha menu cho bạn…" size="md" /></div>}
+        {!loading && error && <div className="mt-10 rounded-[32px] bg-surface-2 px-6 py-5 text-sm text-cream shadow-edge" role="alert">{error}. <button className="underline underline-offset-4" onClick={() => location.reload()}>Thử lại</button></div>}
+        {!loading && !error && filtered.length === 0 && <div className="mt-10 rounded-[32px] bg-surface-2 px-6 py-12 text-center text-sm text-muted shadow-edge">Chưa có món phù hợp. Thử từ khóa khác nhé.</div>}
+
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          {filtered.map((product, index) => {
+            const art = artStyles[index % artStyles.length];
+            return <article className="group flex flex-col rounded-[32px] bg-surface-2 p-2 shadow-edge transition-colors duration-300 hover:bg-[#181818]" key={product.id}>
+              <button
+                className={cn('relative flex h-48 w-full items-center justify-center overflow-hidden rounded-[26px] bg-gradient-to-br sm:h-56', art.media)}
+                onClick={() => { setSelected(product); setSelectedSize('MEDIUM'); setSelectedToppings([]); }}
+                aria-label={`Xem ${product.name}`}
+              >
+                <span aria-hidden="true" className="dot-grid absolute inset-0 opacity-30 [mask-image:radial-gradient(circle_at_50%_45%,black,transparent_72%)]" />
+                <span aria-hidden="true" className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 32%, ${art.glow}, transparent 62%)` }} />
+                <span aria-hidden="true" className="text-6xl drop-shadow-[0_18px_30px_rgba(0,0,0,0.55)] transition-transform duration-500 group-hover:scale-105">{icons[product.category] || '🥤'}</span>
+                <span className="absolute left-3 top-3 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/60 backdrop-blur">{product.category}</span>
+                <span aria-hidden="true" className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-black/45 text-cream/70 opacity-0 backdrop-blur transition duration-300 group-hover:opacity-100">
+                  <ArrowUpRight className="size-3.5" />
+                </span>
+              </button>
+
+              <div className="flex flex-1 flex-col gap-4 p-4">
+                <div className="flex-1">
+                  <h3 className="font-rund text-[17px] font-semibold leading-snug tracking-[-0.015em] text-cream">{product.name}</h3>
+                  <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-muted">{product.description}</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <strong className="font-mono text-[13px] font-medium text-cream">{money(product.basePrice)}</strong>
+                  <LiquidTooltip text="Thêm nhanh" placement="top">
+                    <button
+                      className="grid size-9 place-items-center rounded-full bg-white/[0.06] text-lg leading-none text-cream shadow-edge transition hover:bg-accent hover:text-white"
+                      onClick={() => add(product.id)}
+                      aria-label={`Thêm ${product.name} vào giỏ`}
+                    >
+                      +
+                    </button>
+                  </LiquidTooltip>
+                </div>
+              </div>
+            </article>;
+          })}
+        </div>
+      </div>
+    </section>
+
+    <section id="story" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-16 md:py-20">
+      <div className="surface-card grid items-center gap-8 p-5 md:grid-cols-2 md:gap-12 md:p-10">
+        <div className="relative flex justify-center rounded-[26px] bg-black p-8 shadow-edge">
+          <div aria-hidden="true" className="absolute inset-x-10 bottom-10 h-24 rounded-full bg-accent/25 blur-3xl" />
+          <Book3D src="/book-cover.svg" width={220} height={318} pages={bookPages} />
+        </div>
+        <div>
+          <MagneticScatterText text="Chuyện của quán" className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent" />
+          <h2 className="mt-3 font-rund text-3xl font-bold leading-[1.08] tracking-[-0.03em] md:text-[2.65rem]">Một cuốn sổ, và rất nhiều mùi hương.</h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">Từng mẻ hạt, từng viên đá, từng món topping đều được ghi lại trong cuốn sổ nhỏ của quán. Rê chuột lên bìa để lật thử vài trang — biết đâu bạn tìm được món của mình.</p>
+          <div className="mt-6 flex items-center gap-3">
+            <SoundText text="Chạm thử" className="font-rund text-lg font-semibold text-accent" basePitch={340} />
+            <span aria-hidden="true" className="h-px flex-1 bg-gradient-to-r from-accent/40 to-transparent" />
+          </div>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/30">Hover để lật trang · click để gấp lại</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="cart" className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-20">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="mono-label">Đơn của bạn</p>
+          <h2 className="mt-2 flex items-center gap-3 font-rund text-3xl font-bold tracking-[-0.03em] md:text-4xl">
+            Giỏ hàng
+            <span className="rounded-full bg-accent/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-accent">{count}</span>
+          </h2>
+        </div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cream/30">Miễn phí giao nội thành</p>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[1.55fr_1fr]">
+        <div className="surface-card flex flex-col p-2">
+          <div className="flex-1 rounded-[26px] bg-surface p-4 shadow-edge md:p-6">
+            {count === 0
+              ? <div className="grid place-items-center py-16 text-center">
+                <p className="font-rund text-lg font-semibold text-cream">Giỏ đang chờ món ngon đầu tiên</p>
+                <p className="mt-1 text-xs text-muted">Chọn một ly ở menu phía trên nhé.</p>
+              </div>
+              : <ul className="divide-y divide-white/[0.07]">{products.filter((product) => cart[product.id]).map((product) => {
+                const size = cartSizes[product.id] || 'MEDIUM';
+                const toppings = cartToppings[product.id] || [];
+                const unit = calculateUnitPrice(product.basePrice, size, toppings);
+                return <li className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0" key={product.id}>
+                  <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-xl shadow-edge" aria-hidden="true">{icons[product.category] || '🥤'}</span>
+                  <span className="min-w-[9rem] flex-1 text-sm text-cream">
+                    {product.name} · {size}
+                    <small className="mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-cream/40">{toppings.map((id) => TOPPING_OPTIONS.find((option) => option.id === id)?.name).filter(Boolean).join(', ') || 'Không topping'} · {money(unit)} / món</small>
+                  </span>
+                  <span className="flex items-center gap-1 rounded-full bg-surface-2 p-1 shadow-edge">
+                    <button className="grid size-7 place-items-center rounded-full text-sm text-cream/60 transition hover:bg-white/5 hover:text-cream" onClick={() => changeQuantity(product.id, -1)} aria-label={`Giảm ${product.name}`}>−</button>
+                    <b className="min-w-5 text-center font-mono text-[11px] font-medium text-cream">{cart[product.id]}</b>
+                    <button className="grid size-7 place-items-center rounded-full text-sm text-cream/60 transition hover:bg-white/5 hover:text-cream" onClick={() => changeQuantity(product.id, 1)} aria-label={`Tăng ${product.name}`}>+</button>
+                  </span>
+                  <strong className="w-20 text-right font-mono text-[12px] font-medium text-cream">{money(unit * cart[product.id])}</strong>
+                </li>;
+              })}</ul>}
+          </div>
+        </div>
+
+        <aside className="surface-card flex h-fit flex-col gap-5 p-6 lg:sticky lg:top-24">
+          <div className="flex items-end justify-between">
+            <span className="mono-label">Tạm tính</span>
+            <strong className="font-rund text-[2rem] font-bold leading-none tracking-[-0.03em] text-cream">{money(total)}</strong>
+          </div>
+          <label className="grid gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Phương thức
+            <select className="field font-sans text-[13px] normal-case tracking-normal text-cream" value={paymentMethod} disabled={submitting || !!paymentKey} onChange={(event) => setPaymentMethod(event.target.value as 'WALLET' | 'CARD')}>
               <option value="WALLET">Ví mô phỏng</option>
               <option value="CARD">Thẻ mô phỏng</option>
             </select>
           </label>
-          <div className={cn('flex [&>button]:w-full', count === 0 && 'pointer-events-none opacity-40')}>
-            <RetroPixelButton baseColor="#0d0907" pixelColor="#e2a15c" textColor="#f7f0e6" disabled={count === 0 || submitting} onClick={checkout}>
-              {submitting ? 'Đang xử lý…' : 'Thanh toán mô phỏng'}
-            </RetroPixelButton>
-          </div>
-          {checkoutMessage && <p className="rounded-2xl border border-leaf/25 bg-leaf/10 px-4 py-3 text-[11px] leading-relaxed text-leaf" role="status">{checkoutMessage}</p>}
-          <p className="text-[10px] leading-relaxed text-muted/70">Thanh toán mô phỏng cho mục đích học tập, không lưu thông tin thẻ.</p>
+          <button className="btn btn-primary w-full" disabled={count === 0 || submitting} onClick={checkout}>
+            {submitting ? 'Đang xử lý…' : 'Thanh toán mô phỏng'}
+          </button>
+          {checkoutMessage && <p
+            className={cn('rounded-2xl px-4 py-3 text-[12px] leading-relaxed shadow-edge', checkoutMessage.includes('thành công') ? 'bg-success/10 text-success' : 'bg-accent/10 text-accent-soft')}
+            role="status"
+          >{checkoutMessage}</p>}
+          <p className="font-mono text-[10px] leading-relaxed text-cream/30">Thanh toán mô phỏng cho mục đích học tập, không lưu thông tin thẻ.</p>
         </aside>
       </div>
     </section>
 
-    {showHistory && <section id="orders" className="mx-auto max-w-6xl px-5 pb-16 md:pb-20">
-      <div className="rounded-3xl border border-white/8 bg-surface/60 p-6 backdrop-blur md:p-8">
-        <p className="eyebrow">Your BrewLite orders</p>
-        <h2 className="mt-2 font-serif text-3xl tracking-tight md:text-4xl">Lịch sử đơn hàng</h2>
-        {orderHistory.length === 0
-          ? <p className="mt-5 text-sm text-muted">Chưa có đơn hàng nào.</p>
-          : <ul className="mt-5 divide-y divide-white/8">{orderHistory.map((order) => <li className="flex flex-wrap items-center gap-3 py-4" key={order.id}>
-            <span className="min-w-0 flex-1 text-sm text-cream">
-              <strong className="font-semibold">#{order.id.slice(0, 8)}</strong>
-              <small className="mt-1 block text-[10px] text-muted">{new Date(order.createdAt).toLocaleString('vi-VN')}</small>
-            </span>
-            <span className="rounded-full border border-leaf/25 bg-leaf/10 px-3 py-1 text-[10px] font-semibold tracking-[0.16em] text-leaf">{order.status}</span>
-            <strong className="w-20 text-right text-sm text-copper">{money(Number(order.total))}</strong>
-          </li>)}</ul>}
+    {showHistory && <section id="orders" className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-20">
+      <div className="mb-6">
+        <p className="mono-label">BrewLite orders</p>
+        <h2 className="mt-2 font-rund text-3xl font-bold tracking-[-0.03em] md:text-4xl">Lịch sử đơn hàng</h2>
+      </div>
+      <div className="surface-card p-2">
+        <div className="rounded-[26px] bg-surface p-4 shadow-edge md:p-6">
+          {orderHistory.length === 0
+            ? <p className="py-6 text-sm text-muted">Chưa có đơn hàng nào.</p>
+            : <ul className="divide-y divide-white/[0.07]">{orderHistory.map((order) => <li className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0" key={order.id}>
+              <span className="min-w-0 flex-1 text-sm text-cream">
+                <strong className="font-mono text-[13px] font-medium">#{order.id.slice(0, 8)}</strong>
+                <small className="mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-cream/35">{new Date(order.createdAt).toLocaleString('vi-VN')}</small>
+              </span>
+              <span className="rounded-full bg-success/10 px-3 py-1 font-mono text-[10px] font-medium tracking-[0.12em] text-success">{order.status}</span>
+              <strong className="w-20 text-right font-mono text-[12px] font-medium text-cream">{money(Number(order.total))}</strong>
+            </li>)}</ul>}
+        </div>
       </div>
     </section>}
 
-    <section id="voices" className="mx-auto max-w-6xl px-5 pb-16 md:pb-20">
-      <div className="rounded-3xl border border-white/8 bg-surface/50 px-5 py-10 backdrop-blur md:px-10">
-        <p className="eyebrow text-center">Khách của quán</p>
-        <h2 className="mt-2 text-center font-serif text-3xl tracking-tight md:text-4xl">Một chút thương, gửi lại</h2>
-        <ToastTabs tabs={testimonials} ringColor="#e2a15c" autoplayDelay={4200} className="mt-6" />
+    <section id="voices" className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-20">
+      <div className="surface-card p-2">
+        <div className="rounded-[26px] bg-surface px-5 py-10 shadow-edge md:px-10">
+          <p className="mono-label text-center">Khách của quán</p>
+          <h2 className="mt-2 text-center font-rund text-3xl font-bold tracking-[-0.03em] md:text-4xl">Một chút thương, gửi lại</h2>
+          <ToastTabs tabs={testimonials} ringColor="#fc4c01" autoplayDelay={4200} className="mt-6" />
+        </div>
       </div>
     </section>
 
-    <footer className="border-t border-white/5 bg-ink-soft/80">
-      <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-8 pb-10 text-[10px] uppercase tracking-[0.28em] text-muted/80 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-[10px] uppercase tracking-[0.28em] text-muted/80">BrewLite · Pha chậm một nhịp</span>
-        <span className="normal-case tracking-normal text-muted/60">Made for your little break ☕</span>
+    <footer className="border-t border-white/5 bg-ink px-5 py-10">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <a className="flex items-center gap-2" href="#home" aria-label="BrewLite">
+          <BeanMark className="size-5 text-accent" />
+          <span className="font-rund text-sm font-semibold tracking-[-0.02em] text-cream">BrewLite</span>
+        </a>
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-cream/30">Pha chậm một nhịp · Made for your little break</p>
+        <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/40">
+          <a className="transition hover:text-cream" href="#menu">Menu</a>
+          <a className="transition hover:text-cream" href="#cart">Giỏ</a>
+          <a className="transition hover:text-cream" href="#story">Chuyện</a>
+        </div>
       </div>
     </footer>
 
-    {selected && <div className="animate-backdrop fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-md" role="presentation" onClick={() => setSelected(null)}>
-      <section className="animate-modal w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-b from-surface-2 to-surface p-6 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={(event) => event.stopPropagation()}>
+    {selected && <div className="animate-backdrop fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md" role="presentation" onClick={() => setSelected(null)}>
+      <section className="animate-modal my-auto w-full max-w-md rounded-[32px] bg-surface-2 p-6 shadow-edge md:p-7" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow">{selected.category}</p>
-            <h2 className="mt-2 font-serif text-3xl tracking-tight" id="modal-title">{selected.name}</h2>
+            <p className="mono-label">{selected.category}</p>
+            <h2 className="mt-2 font-rund text-[26px] font-bold tracking-[-0.02em]" id="modal-title">{selected.name}</h2>
           </div>
-          <button className="grid size-8 place-items-center rounded-full border border-white/10 text-lg text-muted transition hover:border-copper/50 hover:text-cream" onClick={() => setSelected(null)} aria-label="Đóng">×</button>
+          <button className="grid size-8 shrink-0 place-items-center rounded-full bg-surface text-lg leading-none text-cream/50 shadow-edge transition hover:text-cream" onClick={() => setSelected(null)} aria-label="Đóng">×</button>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-muted">{selected.description}</p>
-        <p className="mt-4 font-serif text-2xl text-copper">{money(calculateUnitPrice(selected.basePrice, selectedSize, selectedToppings))}</p>
-        <label className="mt-5 grid gap-2 text-[11px] text-muted">Kích cỡ
-          <select className="field" value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}>
+        <p className="mt-3 text-[13px] leading-relaxed text-muted">{selected.description}</p>
+        <p className="mt-4 font-mono text-xl font-medium text-accent">{money(calculateUnitPrice(selected.basePrice, selectedSize, selectedToppings))}</p>
+        <label className="mt-5 grid gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Kích cỡ
+          <select className="field font-sans text-[13px] normal-case tracking-normal text-cream" value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}>
             <option value="SMALL">Small</option>
             <option value="MEDIUM">Medium (+10%)</option>
             <option value="LARGE">Large (+25%)</option>
           </select>
         </label>
-        <fieldset className="mt-5 grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-4">
-          <legend className="px-2 text-[11px] text-muted">Topping</legend>
+        <fieldset className="mt-4 grid gap-2 rounded-2xl bg-surface p-4 shadow-edge">
+          <legend className="px-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Topping</legend>
           {TOPPING_OPTIONS.map((item) => <label className="flex items-center gap-3 text-xs text-cream/90" key={item.id}>
-            <input className="size-4 accent-[#e2a15c]" type="checkbox" checked={selectedToppings.includes(item.id)} onChange={(event) => setSelectedToppings((current) => event.target.checked ? [...current, item.id] : current.filter((value) => value !== item.id))} />
+            <input className="size-4 accent-[#fc4c01]" type="checkbox" checked={selectedToppings.includes(item.id)} onChange={(event) => setSelectedToppings((current) => event.target.checked ? [...current, item.id] : current.filter((value) => value !== item.id))} />
             {item.name} (+{money(item.price)})
           </label>)}
         </fieldset>
-        <div className="mt-6 flex justify-end">
-          <LiquidButton text="Thêm vào giỏ" className="p-0" backgroundColor="bg-gradient-to-br from-copper to-copper-dark" textColor="text-ink" onClick={() => { add(selected.id, selectedSize, selectedToppings); setSelected(null); }} />
+        <div className="mt-6">
+          <button className="btn btn-primary w-full" onClick={() => { add(selected.id, selectedSize, selectedToppings); setSelected(null); }}>Thêm vào giỏ</button>
         </div>
       </section>
     </div>}
 
-    {authModal && <div className="animate-backdrop fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-md" role="presentation" onClick={() => setAuthModal(false)}>
-      <section className="animate-modal w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-b from-surface-2 to-surface p-6 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}>
+    {authModal && <div className="animate-backdrop fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md" role="presentation" onClick={() => setAuthModal(false)}>
+      <section className="animate-modal my-auto w-full max-w-md rounded-[32px] bg-surface-2 p-6 shadow-edge md:p-7" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow">BrewLite account</p>
-            <h2 className="mt-2 font-serif text-3xl tracking-tight" id="auth-title">{authMode === 'login' ? 'Chào bạn quay lại' : 'Tạo tài khoản'}</h2>
+            <p className="mono-label">BrewLite account</p>
+            <h2 className="mt-2 font-rund text-[26px] font-bold tracking-[-0.02em]" id="auth-title">{authMode === 'login' ? 'Chào bạn quay lại' : 'Tạo tài khoản'}</h2>
           </div>
-          <button className="grid size-8 place-items-center rounded-full border border-white/10 text-lg text-muted transition hover:border-copper/50 hover:text-cream" onClick={() => setAuthModal(false)} aria-label="Đóng">×</button>
+          <button className="grid size-8 shrink-0 place-items-center rounded-full bg-surface text-lg leading-none text-cream/50 shadow-edge transition hover:text-cream" onClick={() => setAuthModal(false)} aria-label="Đóng">×</button>
         </div>
         <form className="mt-5 grid gap-4" onSubmit={submitAuth}>
-          {authMode === 'register' && <label className="grid gap-2 text-[11px] text-muted">Tên hiển thị<input className="field" required minLength={2} value={authName} onChange={(event) => setAuthName(event.target.value)} autoComplete="name" /></label>}
-          <label className="grid gap-2 text-[11px] text-muted">Email<input className="field" required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" /></label>
-          <label className="grid gap-2 text-[11px] text-muted">Mật khẩu<input className="field" required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} /></label>
-          {authError && <p className="text-[11px] text-red-300" role="alert">{authError}</p>}
-          <button className="h-11 rounded-xl bg-gradient-to-br from-copper to-copper-dark text-sm font-semibold text-ink transition hover:brightness-110" type="submit">{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký'}</button>
+          {authMode === 'register' && <label className="grid gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Tên hiển thị<input className="field font-sans text-[13px] normal-case tracking-normal text-cream" required minLength={2} value={authName} onChange={(event) => setAuthName(event.target.value)} autoComplete="name" /></label>}
+          <label className="grid gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Email<input className="field font-sans text-[13px] normal-case tracking-normal text-cream" required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" /></label>
+          <label className="grid gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Mật khẩu<input className="field font-sans text-[13px] normal-case tracking-normal text-cream" required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} /></label>
+          {authError && <p className="text-[11px] text-accent-soft" role="alert">{authError}</p>}
+          <button className="btn btn-primary w-full" type="submit">{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký'}</button>
         </form>
-        <button className="mt-4 w-full rounded-xl border border-white/10 py-2.5 text-[11px] text-muted transition hover:border-copper/40 hover:text-cream" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}>{authMode === 'login' ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập'}</button>
+        <button className="mt-4 w-full rounded-[14px] bg-surface py-3 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/50 shadow-edge transition hover:text-cream" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}>{authMode === 'login' ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập'}</button>
       </section>
     </div>}
   </main>;

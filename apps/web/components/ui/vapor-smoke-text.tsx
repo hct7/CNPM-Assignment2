@@ -59,7 +59,7 @@ export const VaporSmokeText: React.FC<VaporSmokeTextProps> = ({
             <motion.span
               key={letterIndex}
               variants={child}
-              className="inline-block origin-bottom font-serif italic will-change-[transform,filter,opacity]"
+              className="inline-block origin-bottom will-change-[transform,filter,opacity]"
             >
               {letter}
             </motion.span>

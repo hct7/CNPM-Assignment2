@@ -167,8 +167,8 @@ const Letter = ({ char, index, onHover }: { char: string; index: number; onHover
       y: -10,
       scale: 1.3,
       rotate: randomRotate,
-      color: '#e2a15c', // Copper highlight
-      textShadow: '0px 0px 8px rgba(226, 161, 92, 0.6)',
+      color: '#fc4c01', // Copper highlight
+      textShadow: '0px 0px 8px rgba(252, 76, 1, 0.55)',
       transition: { type: 'spring', stiffness: 500, damping: 10 },
     });
     setTimeout(() => {
