@@ -334,8 +334,7 @@ export default function Home() {
     <section id="menu" className="relative scroll-mt-24 border-t border-white/5 bg-ink-soft py-20">
       <div className="mx-auto max-w-6xl px-5">
         <div className="mx-auto max-w-2xl text-center">
-          <SoundText text="BrewLite selection" className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent" basePitch={260} />
-          <h2 className="mt-3 font-rund text-4xl font-bold tracking-[-0.03em] md:text-[3.1rem] md:leading-[1.05]">Menu hôm nay</h2>
+          <h2 className="font-rund text-4xl font-bold tracking-[-0.03em] md:text-[3.1rem] md:leading-[1.05]">Menu hôm nay</h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">Bốn món quen, pha mỗi ngày. Chọn size và topping ở bước tiếp theo.</p>
         </div>
 
