@@ -27,6 +27,8 @@ jobs:
       DATABASE_URL: postgresql://brewlite:ci_test_password@localhost:5432/brewlite
       JWT_SECRET: ci-only-secret-with-at-least-32-characters
       PAYMENT_MOCK_MODE: success
+      ADMIN_EMAIL: admin@brewlite.local
+      ADMIN_PASSWORD: LocalOnly-BrewLite-ChangeMe!2026
     defaults:
       run:
         working-directory: apps/api
@@ -77,6 +79,8 @@ jobs:
       JWT_SECRET: ci-only-secret-with-at-least-32-characters
       PAYMENT_MOCK_MODE: success
       NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+      ADMIN_EMAIL: admin@brewlite.local
+      ADMIN_PASSWORD: LocalOnly-BrewLite-ChangeMe!2026
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

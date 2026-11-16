@@ -7,8 +7,10 @@ BrewLite là ứng dụng đặt đồ uống cho bài tập lớn môn Công ng
 - Xem và tìm kiếm menu, lọc theo loại đồ uống; ảnh sản phẩm có ảnh dự phòng nếu nguồn ảnh không tải được.
 - Xem chi tiết món, chọn kích cỡ và topping; giỏ hàng được lưu trên trình duyệt.
 - Đăng ký, đăng nhập, tạo đơn, thanh toán mô phỏng và xem lịch sử đơn hàng.
+- Áp dụng mã khuyến mãi từ PostgreSQL ở checkout; tích điểm loyalty sau thanh toán thành công.
+- Trang quản trị `/admin` để theo dõi đơn theo trạng thái, cập nhật tiến độ pha chế và quản lý mã khuyến mãi.
 - Nền sóng cà phê động ở landing page, phản ứng theo chuyển động chuột.
-- API quản lý tồn kho, xác thực người dùng, chống tạo đơn/thanh toán trùng bằng idempotency key và kiểm soát chuyển trạng thái đơn.
+- API quản lý tồn kho bằng transaction và optimistic version check, xác thực người dùng, chống tạo đơn/thanh toán trùng bằng idempotency key và kiểm soát chuyển trạng thái đơn.
 
 Thanh toán chỉ mô phỏng cho mục đích học tập; ứng dụng không nhận hoặc lưu thông tin thẻ thật.
 
@@ -42,6 +44,8 @@ Compose khởi chạy PostgreSQL, API và web; API tự áp dụng migrations kh
 - API health: <http://localhost:3001/health>
 - Menu API: <http://localhost:3001/products>
 
+Tài khoản quản lý local được tạo/cập nhật từ `ADMIN_EMAIL` và `ADMIN_PASSWORD` trong `.env` khi API khởi động. Giá trị mẫu trong `.env.example` chỉ dành cho máy local; hãy đổi mật khẩu trước khi dùng môi trường chia sẻ.
+
 Nhấn `Ctrl+C` để dừng. Dùng `docker compose down` để dừng dịch vụ nhưng giữ dữ liệu PostgreSQL; `docker compose down -v` sẽ xóa cả volume database.
 
 ## API chính
@@ -55,6 +59,12 @@ Nhấn `Ctrl+C` để dừng. Dùng `docker compose down` để dừng dịch v�
 | `POST` | `/orders/:id/pay` | Thanh toán mô phỏng; cần bearer token và `Idempotency-Key` |
 | `GET` | `/orders/me` | Lịch sử đơn của tài khoản đang đăng nhập |
 | `PATCH` | `/orders/:id/status` | Cập nhật trạng thái đơn cho nhân viên/quản lý |
+| `GET` | `/promotions` | Danh sách mã khuyến mãi đang hoạt động |
+| `POST` | `/promotions/validate` | Kiểm tra mã với giá trị giỏ hàng |
+| `GET` | `/loyalty/me` | Điểm và lịch sử loyalty của tài khoản |
+| `GET` | `/admin/orders?status=PAID` | Lọc đơn (STAFF/MANAGER) |
+| `GET`, `POST` | `/admin/promotions` | Xem/tạo mã (STAFF/MANAGER) |
+| `PATCH` | `/admin/promotions/:id` | Bật/tắt mã (STAFF/MANAGER) |
 
 API dùng `JWT_SECRET` để ký token, `WEB_ORIGIN` để cấu hình CORS và `PAYMENT_MOCK_MODE=success` (hoặc `fail`) để chọn kết quả thanh toán mô phỏng. Các giá trị local mẫu nằm trong `.env.example`; không dùng secret mẫu trong production.
 
@@ -78,7 +88,7 @@ npm test
 npm run build
 ```
 
-API integration test cần PostgreSQL đang chạy và `DATABASE_URL` trỏ đến máy local, ví dụ `postgresql://brewlite:local_dev_only_change_me@localhost:5432/brewlite`. Sau đó chạy `npm run test:integration` trong `apps/api`. Kiểm thử trình duyệt dùng Playwright và Chromium: chạy `npx playwright install chromium`, rồi `npm run test:e2e` trong `apps/web`; cấu hình Playwright tự khởi động API và web, vì vậy cần PostgreSQL local sẵn sàng.
+API integration test cần PostgreSQL riêng cho test vì bộ test xóa dữ liệu bảng nghiệp vụ trước mỗi ca; không trỏ suite vào database đang dùng. Kiểm thử trình duyệt dùng Playwright và Chromium: chạy `npx playwright install chromium`, rồi `npm run test:e2e` trong `apps/web`; cấu hình Playwright tự khởi động API và web, vì vậy cần PostgreSQL local sẵn sàng.
 
 CI chạy lint, unit test, API integration test, build và kiểm thử đặt hàng qua trình duyệt. Workflow nằm trong `.github/workflows/`.
 

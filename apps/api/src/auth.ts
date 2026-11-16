@@ -1,4 +1,4 @@
-import { Body, Controller, Inject, Post, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Inject, Post, UnauthorizedException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 import { randomUUID, createHmac, timingSafeEqual } from 'node:crypto';
 import { Pool } from 'pg';
@@ -42,6 +42,12 @@ export function verifyToken(token: string): { sub: string; role: string } {
 export function bearer(header?: string) {
   if (!header?.startsWith('Bearer ')) throw new UnauthorizedException('Cần đăng nhập');
   return verifyToken(header.slice(7));
+}
+
+export function requireStaff(header?: string) {
+  const user = bearer(header);
+  if (!['STAFF', 'MANAGER'].includes(user.role)) throw new ForbiddenException('Chỉ nhân viên hoặc quản lý mới được truy cập');
+  return user;
 }
 
 @Controller('auth')

@@ -14,6 +14,10 @@ export default defineConfig({
     {
       command: 'node ../api/dist/main.js',
       url: 'http://127.0.0.1:3001/health',
+      env: {
+        ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@brewlite.local',
+        ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'LocalOnly-BrewLite-ChangeMe!2026',
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

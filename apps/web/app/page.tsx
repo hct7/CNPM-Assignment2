@@ -25,6 +25,7 @@ const LiquidWave = dynamic(() => import('@/components/ui/liquid-wave'), {
 
 type Product = { id: number; name: string; description: string; category: string; basePrice: number; stock: number; imageUrl?: string | null };
 type OrderSummary = { id: string; status: string; total: number; createdAt: string };
+type AppliedPromotion = { code: string; discountAmount: number; total: number };
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 const fallbackProductPhoto = 'https://images.unsplash.com/photo-1664515725366-e8328e9dc834?auto=format&fit=crop&w=1000&q=85';
 const productPhotos: Record<number, string> = {
@@ -91,6 +92,12 @@ export default function Home() {
   const [cart, setCart] = useState<Record<number, number>>({});
   const [cartSizes, setCartSizes] = useState<Record<number, string>>({});
   const [cartToppings, setCartToppings] = useState<Record<number, string[]>>({});
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromotion, setAppliedPromotion] = useState<AppliedPromotion | null>(null);
+  const [promoMessage, setPromoMessage] = useState('');
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [userRole, setUserRole] = useState('');
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
   const [orderKey, setOrderKey] = useState('');
   const [paymentKey, setPaymentKey] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'CARD'>('WALLET');
@@ -112,6 +119,7 @@ export default function Home() {
 
   useEffect(() => {
     setAccessToken(localStorage.getItem('brewlite-token') || '');
+    setUserRole(localStorage.getItem('brewlite-role') || '');
     try {
       const savedCart = localStorage.getItem('brewlite-cart');
       const savedSizes = localStorage.getItem('brewlite-cart-sizes');
@@ -129,6 +137,14 @@ export default function Home() {
     }).then(setProducts).catch((reason: Error) => setError(reason.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!accessToken) { setLoyaltyPoints(null); return; }
+    fetch(`${API}/loyalty/me`, { headers: { Authorization: `Bearer ${accessToken}` } })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => setLoyaltyPoints(result ? Number(result.points) : null))
+      .catch(() => setLoyaltyPoints(null));
+  }, [accessToken]);
 
   useEffect(() => {
     if (!cartLoaded) return;
@@ -149,11 +165,13 @@ export default function Home() {
     (category === 'Tất cả' || item.category === category) &&
     item.name.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi'))), [products, category, query]);
   const count = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
-  const total = calculateCartTotal(products, cart, cartSizes, cartToppings);
+  const subtotal = calculateCartTotal(products, cart, cartSizes, cartToppings);
+  const total = Math.max(0, subtotal - (appliedPromotion?.discountAmount || 0));
   const add = (id: number, size = 'MEDIUM', toppings: string[] = []) => {
     setCart((current) => ({ ...current, [id]: (current[id] || 0) + 1 }));
     setCartSizes((current) => ({ ...current, [id]: size }));
     setCartToppings((current) => ({ ...current, [id]: toppings }));
+    setAppliedPromotion(null); setPromoMessage('');
     setOrderKey(''); setPaymentKey('');
   };
   const changeQuantity = (id: number, delta: number) => {
@@ -163,7 +181,27 @@ export default function Home() {
       setCartSizes((current) => { const next = { ...current }; delete next[id]; return next; });
       setCartToppings((current) => { const next = { ...current }; delete next[id]; return next; });
     } else setCart((current) => ({ ...current, [id]: nextQuantity }));
+    setAppliedPromotion(null); setPromoMessage('');
     setOrderKey(''); setPaymentKey('');
+  };
+  const applyPromotion = async () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) { setPromoMessage('Nhập mã khuyến mãi trước nhé.'); return; }
+    setPromoBusy(true); setPromoMessage('');
+    try {
+      const response = await fetch(`${API}/promotions/validate`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subtotal }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Không áp dụng được mã này');
+      setAppliedPromotion({ code: result.code, discountAmount: Number(result.discountAmount), total: Number(result.total) });
+      setPromoInput(result.code); setPromoMessage(`Đã áp dụng ${result.code}`);
+      setOrderKey(''); setPaymentKey('');
+    } catch (reason) {
+      setAppliedPromotion(null);
+      setPromoMessage(reason instanceof Error ? reason.message : 'Không áp dụng được mã này');
+    } finally { setPromoBusy(false); }
   };
   const loadHistory = async () => {
     if (!accessToken) { setAuthMode('login'); setAuthModal(true); setAuthError('Đăng nhập để xem lịch sử đơn.'); return; }
@@ -182,9 +220,9 @@ export default function Home() {
       const orderResponse = await fetch(`${API}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}`, 'Idempotency-Key': idempotencyKey },
-        body: JSON.stringify({ items: Object.entries(cart).map(([productId, quantity]) => ({ productId: Number(productId), quantity, size: cartSizes[Number(productId)] || 'MEDIUM', toppings: cartToppings[Number(productId)] || [] })) }),
+        body: JSON.stringify({ items: Object.entries(cart).map(([productId, quantity]) => ({ productId: Number(productId), quantity, size: cartSizes[Number(productId)] || 'MEDIUM', toppings: cartToppings[Number(productId)] || [] })), promoCode: appliedPromotion?.code }),
       });
-      if (orderResponse.status === 401) { localStorage.removeItem('brewlite-token'); setAccessToken(''); setAuthModal(true); throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'); }
+      if (orderResponse.status === 401) { localStorage.removeItem('brewlite-token'); localStorage.removeItem('brewlite-role'); setAccessToken(''); setUserRole(''); setAuthModal(true); throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'); }
       const order = await orderResponse.json();
       if (!orderResponse.ok) throw new Error(order.message || 'Không tạo được đơn hàng');
       const activePaymentKey = paymentKey || crypto.randomUUID();
@@ -197,8 +235,11 @@ export default function Home() {
       const payment = await paymentResponse.json();
       if (!paymentResponse.ok) throw new Error(payment.message || 'Không thanh toán được đơn hàng');
       if (payment.status === 'SUCCESS') {
-        setCheckoutMessage(`Đặt hàng thành công · PAID · mã ${order.id.slice(0, 8)} · ${money(payment.total)}`);
+        const promoReceipt = order.promoCode ? ` · ${order.promoCode} −${money(Number(order.discountAmount))}` : '';
+        setCheckoutMessage(`Đặt hàng thành công · PAID · mã ${order.id.slice(0, 8)}${promoReceipt} · ${money(payment.total)} · +${payment.loyaltyPointsAwarded || 0} điểm`);
         setCart({}); setCartSizes({}); setCartToppings({}); setOrderKey(''); setPaymentKey('');
+        setAppliedPromotion(null); setPromoInput(''); setPromoMessage('');
+        setLoyaltyPoints((current) => (current ?? 0) + Number(payment.loyaltyPointsAwarded || 0));
         const historyResponse = await fetch(`${API}/orders/me`, { headers: { Authorization: `Bearer ${accessToken}` } });
         if (historyResponse.ok) { setOrderHistory(await historyResponse.json()); setShowHistory(true); }
       } else {
@@ -218,6 +259,8 @@ export default function Home() {
       const result = await response.json();
       if (!response.ok) throw new Error(Array.isArray(result.message) ? result.message.join(', ') : result.message || 'Không xác thực được');
       localStorage.setItem('brewlite-token', result.accessToken);
+      localStorage.setItem('brewlite-role', result.user.role);
+      setUserRole(result.user.role);
       setAccessToken(result.accessToken); setAuthModal(false); setAuthPassword(''); setAuthError('');
     } catch (reason) { setAuthError(reason instanceof Error ? reason.message : 'Có lỗi xảy ra'); }
   };
@@ -238,12 +281,14 @@ export default function Home() {
           <a className="nav-link px-3" href="#cart">Giỏ hàng</a>
           <span aria-hidden="true" className="h-3.5 w-px bg-white/10" />
           <a className="nav-link px-3" href="#voices">Khách</a>
+          {['STAFF', 'MANAGER'].includes(userRole) && <><span aria-hidden="true" className="h-3.5 w-px bg-white/10" /><a className="nav-link px-3" href="/admin">Admin</a></>}
         </nav>
 
         <div className="flex shrink-0 items-center gap-1">
           {accessToken && <button className="nav-link px-2 sm:px-3" onClick={loadHistory}>Đơn hàng</button>}
+          {['STAFF', 'MANAGER'].includes(userRole) && <a className="nav-link px-2 sm:px-3" href="/admin">Admin</a>}
           {accessToken
-            ? <button className="nav-link hidden px-3 sm:inline-flex" onClick={() => { localStorage.removeItem('brewlite-token'); setAccessToken(''); }}>Đăng xuất</button>
+            ? <button className="nav-link hidden px-3 sm:inline-flex" onClick={() => { localStorage.removeItem('brewlite-token'); localStorage.removeItem('brewlite-role'); setAccessToken(''); setUserRole(''); }}>Đăng xuất</button>
             : <button className="btn btn-secondary btn-sm" onClick={() => { setAuthMode('login'); setAuthModal(true); }}>Đăng nhập</button>}
           <LiquidTooltip text={`Giỏ hàng · ${count} món`} placement="bottom">
             <a className="btn btn-secondary btn-sm gap-2 px-2.5" href="#cart" aria-label={`Giỏ hàng, ${count} sản phẩm`}>
@@ -441,10 +486,25 @@ export default function Home() {
         </div>
 
         <aside className="surface-card flex h-fit flex-col gap-5 p-6 lg:sticky lg:top-24">
-          <div className="flex items-end justify-between">
-            <span className="mono-label">Tạm tính</span>
-            <strong className="font-rund text-[2rem] font-bold leading-none tracking-[-0.03em] text-cream">{money(total)}</strong>
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between text-xs text-muted"><span>Tạm tính</span><span className="font-mono">{money(subtotal)}</span></div>
+            {appliedPromotion && <div className="flex items-center justify-between text-xs text-success"><span>Mã {appliedPromotion.code}</span><span className="font-mono">−{money(appliedPromotion.discountAmount)}</span></div>}
+            <div className="mt-1 flex items-end justify-between border-t border-white/10 pt-3">
+              <span className="mono-label">Tổng cộng</span>
+              <strong className="font-rund text-[2rem] font-bold leading-none tracking-[-0.03em] text-cream">{money(total)}</strong>
+            </div>
           </div>
+          <div className="grid gap-2">
+            <label htmlFor="promo-code" className="font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Mã khuyến mãi</label>
+            <div className="flex gap-2">
+              <input id="promo-code" className="field min-w-0 flex-1 font-mono text-[12px] uppercase text-cream placeholder:normal-case" value={promoInput} onChange={(event) => setPromoInput(event.target.value)} placeholder="Ví dụ: WELCOME10" maxLength={40} />
+              {appliedPromotion
+                ? <button className="btn btn-secondary px-3 text-xs" onClick={() => { setAppliedPromotion(null); setPromoMessage(''); setOrderKey(''); setPaymentKey(''); }}>Gỡ</button>
+                : <button className="btn btn-secondary px-3 text-xs" onClick={applyPromotion} disabled={promoBusy || subtotal <= 0}>{promoBusy ? '…' : 'Áp dụng'}</button>}
+            </div>
+            {promoMessage && <p className={cn('text-[11px]', appliedPromotion ? 'text-success' : 'text-accent-soft')} role="status">{promoMessage}</p>}
+          </div>
+          <p className="rounded-2xl bg-white/[0.03] px-3 py-2 text-[11px] text-cream/45">{loyaltyPoints === null ? 'Thanh toán thành công nhận 1 điểm cho mỗi 10.000đ.' : `Bạn đang có ${loyaltyPoints} điểm · nhận 1 điểm cho mỗi 10.000đ.`}</p>
           <label className="grid gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/45">Phương thức
             <select className="field font-sans text-[13px] normal-case tracking-normal text-cream" value={paymentMethod} disabled={submitting || !!paymentKey} onChange={(event) => setPaymentMethod(event.target.value as 'WALLET' | 'CARD')}>
               <option value="WALLET">Ví mô phỏng</option>

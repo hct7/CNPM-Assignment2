@@ -6,7 +6,7 @@
 | 2 - Mô hình hóa | Sơ đồ nguồn đã tạo | Activity, sequence, class, use-case, order state machine; sequence có SVG render; chưa có kiểm tra render PlantUML tự động |
 | 3 - Kiến trúc | Thiết kế và target deploy đã chọn | Overview, ADR, deployment diagram Vercel + managed PostgreSQL; projects/database chưa provision |
 | 4 - Sprint 1 | Tạo phẩm local có đủ khung | Git local, Next.js/NestJS/PostgreSQL, seed, GET products, health, menu mobile-first, CI workflow; remote/PR/branch protection và bằng chứng pipeline cần chạy trên GitHub |
-| 5 - Sprint 2 + delivery | Tạo phẩm code và pipeline đã có; production chưa chạy | Checkout UI có size/topping, auth, idempotency, stock transaction, payment mock, lịch sử, state machine, migration, API integration, browser E2E test và CD Vercel workflow; loyalty/promotion chưa vận hành; cần chạy CI/deploy thật, cấu hình Vercel projects, managed database, secrets/URLs, quay demo và retrospective |
+| 5 - Sprint 2 + delivery | Tạo phẩm code và pipeline đã có; production chưa chạy | Checkout UI có size/topping/promo, auth, idempotency, optimistic stock version check, payment mock, lịch sử, admin đơn và khuyến mãi, loyalty, migration, API integration, browser E2E test và CD Vercel workflow; cần chạy CI/deploy thật, cấu hình Vercel projects, managed database, secrets/URLs, quay demo và retrospective |
 
 ## Cần nhóm cung cấp hoặc thực hiện
 

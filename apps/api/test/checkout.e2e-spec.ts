@@ -100,4 +100,34 @@ describe('BrewLite HTTP integration: menu → checkout → order state', () => {
     expect(results.map((response) => response.status).sort()).toEqual([201, 409]);
     expect(Number((await db.query('SELECT stock FROM products WHERE id=$1', [productId])).rows[0].stock)).toBe(10);
   });
+
+  it('applies a database promo, awards loyalty points once, and exposes admin order controls', async () => {
+    const token = await register();
+    const managerToken = signToken({ id: '00000000-0000-4000-8000-000000000002', role: 'MANAGER' });
+    const validation = await http().post('/promotions/validate').send({ code: 'welcome10', subtotal: 44500 }).expect(201);
+    expect(validation.body).toMatchObject({ code: 'WELCOME10', discountAmount: 4450, total: 40050 });
+
+    const created = await http().post('/orders').set('Authorization', `Bearer ${token}`).set('Idempotency-Key', 'promo-order-1')
+      .send({ items: [{ productId, quantity: 1, size: 'MEDIUM', toppings: ['PEARL'] }], promoCode: 'WELCOME10' }).expect(201);
+    expect(created.body).toMatchObject({ subtotal: 44500, discountAmount: 4450, promoCode: 'WELCOME10', total: 40050 });
+    await http().post(`/orders/${created.body.id}/pay`).set('Authorization', `Bearer ${token}`).set('Idempotency-Key', 'promo-payment-1')
+      .send({ method: 'WALLET' }).expect(201).expect(({ body }) => expect(body.loyaltyPointsAwarded).toBe(4));
+
+    const replay = await http().post(`/orders/${created.body.id}/pay`).set('Authorization', `Bearer ${token}`).set('Idempotency-Key', 'promo-payment-1')
+      .send({ method: 'WALLET' }).expect(201);
+    expect(replay.body.replayed).toBe(true);
+    expect((await http().get('/loyalty/me').set('Authorization', `Bearer ${token}`).expect(200)).body.points).toBe(4);
+
+    await http().get('/admin/orders?status=PAID').set('Authorization', `Bearer ${managerToken}`).expect(200).expect(({ body }) => {
+      expect(body[0]).toMatchObject({ id: created.body.id, customerEmail: expect.stringContaining('@'), promoCode: 'WELCOME10' });
+    });
+    await http().patch(`/orders/${created.body.id}/status`).set('Authorization', `Bearer ${managerToken}`).send({ status: 'PREPARING' }).expect(200);
+    const promoCode = `STAFF${Date.now()}`;
+    const managedPromotion = await http().post('/admin/promotions').set('Authorization', `Bearer ${managerToken}`).send({
+      code: promoCode, discountType: 'PERCENT', discountValue: 15, minOrderAmount: 50000, maxDiscount: 12000,
+    }).expect(201);
+    expect(managedPromotion.body).toMatchObject({ code: promoCode, discountValue: 15, active: true });
+    await http().patch(`/admin/promotions/${managedPromotion.body.id}`).set('Authorization', `Bearer ${managerToken}`).send({ active: false }).expect(200);
+    await http().get('/admin/orders').set('Authorization', `Bearer ${token}`).expect(403);
+  });
 });
