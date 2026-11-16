@@ -44,7 +44,7 @@ Compose khởi chạy PostgreSQL, API và web; API tự áp dụng migrations kh
 - API health: <http://localhost:3001/health>
 - Menu API: <http://localhost:3001/products>
 
-Tài khoản quản lý local được tạo/cập nhật từ `ADMIN_EMAIL` và `ADMIN_PASSWORD` trong `.env` khi API khởi động. Giá trị mẫu trong `.env.example` chỉ dành cho máy local; hãy đổi mật khẩu trước khi dùng môi trường chia sẻ.
+Tài khoản quản lý local được tạo/cập nhật từ `ADMIN_EMAIL` và `ADMIN_PASSWORD` trong `.env` khi API khởi động. Compose cho phép mật khẩu local từ 8 ký tự; khi triển khai production, cấu hình `ADMIN_PASSWORD_MIN_LENGTH=16` và dùng mật khẩu dài, riêng biệt. Các giá trị mẫu trong `.env.example` chỉ dành cho máy local.
 
 Nhấn `Ctrl+C` để dừng. Dùng `docker compose down` để dừng dịch vụ nhưng giữ dữ liệu PostgreSQL; `docker compose down -v` sẽ xóa cả volume database.
 

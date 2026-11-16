@@ -11,7 +11,10 @@ async function provisionManager(client: PoolClient) {
   if (!email && !password) return;
   if (!email || !password) throw new Error('Set both ADMIN_EMAIL and ADMIN_PASSWORD to provision the manager account');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('ADMIN_EMAIL must be a valid email address');
-  if (password.length < 16) throw new Error('ADMIN_PASSWORD must contain at least 16 characters');
+  const minimumLength = Number(process.env.ADMIN_PASSWORD_MIN_LENGTH || 16);
+  if (!Number.isInteger(minimumLength) || minimumLength < 8 || password.length < minimumLength) {
+    throw new Error(`ADMIN_PASSWORD must contain at least ${minimumLength} characters`);
+  }
 
   const passwordHash = await bcrypt.hash(password, 12);
   await client.query(
