@@ -1,0 +1,90 @@
+name: Release and deploy
+on:
+  push:
+    tags: ['v*.*.*']
+permissions:
+  contents: write
+  packages: write
+jobs:
+  quality:
+    uses: ./.github/workflows/ci.yml
+
+  publish-images:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment URL
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+        run: test -n "$NEXT_PUBLIC_API_URL"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set image prefix
+        id: image
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/api
+          push: true
+          tags: ${{ steps.image.outputs.prefix }}-api:${{ github.sha }}
+      - name: Build and push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/web
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
+          tags: ${{ steps.image.outputs.prefix }}-web:${{ github.sha }}
+
+  deploy-production:
+    needs: publish-images
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.WEB_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          test -n "$DEPLOY_SSH_KEY"
+          test -n "$DEPLOY_KNOWN_HOSTS"
+          install -m 700 -d "$RUNNER_TEMP/brewlite-ssh"
+          printf '%s' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/brewlite-ssh/id_ed25519"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/brewlite-ssh/known_hosts"
+          chmod 600 "$RUNNER_TEMP/brewlite-ssh/id_ed25519" "$RUNNER_TEMP/brewlite-ssh/known_hosts"
+      - name: Copy deployment files
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          test -n "$DEPLOY_HOST"
+          test -n "$DEPLOY_USER"
+          SSH="ssh -i $RUNNER_TEMP/brewlite-ssh/id_ed25519 -o UserKnownHostsFile=$RUNNER_TEMP/brewlite-ssh/known_hosts -o StrictHostKeyChecking=yes"
+          SCP="scp -i $RUNNER_TEMP/brewlite-ssh/id_ed25519 -o UserKnownHostsFile=$RUNNER_TEMP/brewlite-ssh/known_hosts -o StrictHostKeyChecking=yes"
+          $SSH "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p /opt/brewlite'
+          $SCP deploy/production/docker-compose.yml deploy/production/Caddyfile deploy/production/deploy-release.sh "$DEPLOY_USER@$DEPLOY_HOST:/opt/brewlite/"
+      - name: Deploy and smoke test with rollback
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i "$RUNNER_TEMP/brewlite-ssh/id_ed25519" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/brewlite-ssh/known_hosts" \
+            -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "cd /opt/brewlite && chmod 700 deploy-release.sh && ./deploy-release.sh '${GITHUB_SHA}'"
+      - name: Publish GitHub release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes

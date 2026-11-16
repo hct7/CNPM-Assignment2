@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
+import { calculateCartTotal, calculateUnitPrice, TOPPING_OPTIONS } from '../lib/cart-utils.mjs';
 
 type Product = { id: number; name: string; description: string; category: string; basePrice: number; stock: number };
 type OrderSummary = { id: string; status: string; total: number; createdAt: string };
@@ -17,11 +18,13 @@ export default function Home() {
   const [query, setQuery] = useState('');
   const [cart, setCart] = useState<Record<number, number>>({});
   const [cartSizes, setCartSizes] = useState<Record<number, string>>({});
+  const [cartToppings, setCartToppings] = useState<Record<number, string[]>>({});
   const [orderKey, setOrderKey] = useState('');
   const [paymentKey, setPaymentKey] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'CARD'>('WALLET');
   const [selected, setSelected] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState('MEDIUM');
+  const [selectedToppings, setSelectedToppings] = useState<string[]>([]);
   const [accessToken, setAccessToken] = useState('');
   const [authModal, setAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -40,11 +43,13 @@ export default function Home() {
     try {
       const savedCart = localStorage.getItem('brewlite-cart');
       const savedSizes = localStorage.getItem('brewlite-cart-sizes');
+      const savedToppings = localStorage.getItem('brewlite-cart-toppings');
       setOrderKey(localStorage.getItem('brewlite-order-key') || '');
       setPaymentKey(localStorage.getItem('brewlite-payment-key') || '');
       if (savedCart) setCart(JSON.parse(savedCart));
       if (savedSizes) setCartSizes(JSON.parse(savedSizes));
-    } catch { localStorage.removeItem('brewlite-cart'); localStorage.removeItem('brewlite-cart-sizes'); }
+      if (savedToppings) setCartToppings(JSON.parse(savedToppings));
+    } catch { localStorage.removeItem('brewlite-cart'); localStorage.removeItem('brewlite-cart-sizes'); localStorage.removeItem('brewlite-cart-toppings'); }
     setCartLoaded(true);
     fetch(`${API}/products`).then((response) => {
       if (!response.ok) throw new Error('Không tải được menu');
@@ -57,7 +62,8 @@ export default function Home() {
     if (!cartLoaded) return;
     localStorage.setItem('brewlite-cart', JSON.stringify(cart));
     localStorage.setItem('brewlite-cart-sizes', JSON.stringify(cartSizes));
-  }, [cart, cartSizes, cartLoaded]);
+    localStorage.setItem('brewlite-cart-toppings', JSON.stringify(cartToppings));
+  }, [cart, cartSizes, cartToppings, cartLoaded]);
 
   useEffect(() => {
     if (!cartLoaded) return;
@@ -70,14 +76,11 @@ export default function Home() {
     (category === 'Tất cả' || item.category === category) &&
     item.name.toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi'))), [products, category, query]);
   const count = Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
-  const total = products.reduce((sum, item) => {
-    const size = cartSizes[item.id] || 'MEDIUM';
-    const multiplier = size === 'LARGE' ? 1.25 : size === 'MEDIUM' ? 1.1 : 1;
-    return sum + Math.round(item.basePrice * multiplier) * (cart[item.id] || 0);
-  }, 0);
-  const add = (id: number, size = 'MEDIUM') => {
+  const total = calculateCartTotal(products, cart, cartSizes, cartToppings);
+  const add = (id: number, size = 'MEDIUM', toppings: string[] = []) => {
     setCart((current) => ({ ...current, [id]: (current[id] || 0) + 1 }));
     setCartSizes((current) => ({ ...current, [id]: size }));
+    setCartToppings((current) => ({ ...current, [id]: toppings }));
     setOrderKey(''); setPaymentKey('');
   };
   const changeQuantity = (id: number, delta: number) => {
@@ -85,6 +88,7 @@ export default function Home() {
     if (nextQuantity <= 0) {
       setCart((current) => { const next = { ...current }; delete next[id]; return next; });
       setCartSizes((current) => { const next = { ...current }; delete next[id]; return next; });
+      setCartToppings((current) => { const next = { ...current }; delete next[id]; return next; });
     } else setCart((current) => ({ ...current, [id]: nextQuantity }));
     setOrderKey(''); setPaymentKey('');
   };
@@ -105,7 +109,7 @@ export default function Home() {
       const orderResponse = await fetch(`${API}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}`, 'Idempotency-Key': idempotencyKey },
-        body: JSON.stringify({ items: Object.entries(cart).map(([productId, quantity]) => ({ productId: Number(productId), quantity, size: cartSizes[Number(productId)] || 'MEDIUM' })) }),
+        body: JSON.stringify({ items: Object.entries(cart).map(([productId, quantity]) => ({ productId: Number(productId), quantity, size: cartSizes[Number(productId)] || 'MEDIUM', toppings: cartToppings[Number(productId)] || [] })) }),
       });
       if (orderResponse.status === 401) { localStorage.removeItem('brewlite-token'); setAccessToken(''); setAuthModal(true); throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'); }
       const order = await orderResponse.json();
@@ -120,8 +124,8 @@ export default function Home() {
       const payment = await paymentResponse.json();
       if (!paymentResponse.ok) throw new Error(payment.message || 'Không thanh toán được đơn hàng');
       if (payment.status === 'SUCCESS') {
-        setCheckoutMessage(`Đặt hàng thành công · mã ${order.id.slice(0, 8)} · ${money(payment.total)}`);
-        setCart({}); setCartSizes({}); setOrderKey(''); setPaymentKey('');
+        setCheckoutMessage(`Đặt hàng thành công · PAID · mã ${order.id.slice(0, 8)} · ${money(payment.total)}`);
+        setCart({}); setCartSizes({}); setCartToppings({}); setOrderKey(''); setPaymentKey('');
         const historyResponse = await fetch(`${API}/orders/me`, { headers: { Authorization: `Bearer ${accessToken}` } });
         if (historyResponse.ok) { setOrderHistory(await historyResponse.json()); setShowHistory(true); }
       } else {
@@ -153,12 +157,12 @@ export default function Home() {
       {loading && <div className="notice">Đang pha menu cho bạn…</div>}
       {!loading && error && <div className="notice error" role="alert">{error}. <button onClick={() => location.reload()}>Thử lại</button></div>}
       {!loading && !error && filtered.length === 0 && <div className="notice">Chưa có món phù hợp. Thử từ khóa khác nhé.</div>}
-      <div className="product-grid">{filtered.map((product, index) => <article className="product-card" key={product.id}><button className={`product-art art-${index % 4}`} onClick={() => setSelected(product)} aria-label={`Xem ${product.name}`}><span>{icons[product.category] || '🥤'}</span><i>{product.category}</i></button><div className="product-info"><div><p className="category">{product.category}</p><h3>{product.name}</h3><p className="description">{product.description}</p></div><div className="buy-row"><strong>{money(product.basePrice)}</strong><button className="add-button" onClick={() => add(product.id)} aria-label={`Thêm ${product.name} vào giỏ`}>+</button></div></div></article>)}</div>
+      <div className="product-grid">{filtered.map((product, index) => <article className="product-card" key={product.id}><button className={`product-art art-${index % 4}`} onClick={() => { setSelected(product); setSelectedSize('MEDIUM'); setSelectedToppings([]); }} aria-label={`Xem ${product.name}`}><span>{icons[product.category] || '🥤'}</span><i>{product.category}</i></button><div className="product-info"><div><p className="category">{product.category}</p><h3>{product.name}</h3><p className="description">{product.description}</p></div><div className="buy-row"><strong>{money(product.basePrice)}</strong><button className="add-button" onClick={() => add(product.id)} aria-label={`Thêm ${product.name} vào giỏ`}>+</button></div></div></article>)}</div>
     </section>
-    <section className="cart-panel" id="cart"><div><p className="eyebrow">YOUR LITTLE PICK-ME-UP</p><h2>Giỏ hàng <span className="count-pill">{count}</span></h2>{count === 0 ? <p>Giỏ đang chờ món ngon đầu tiên.</p> : <ul>{products.filter((product) => cart[product.id]).map((product) => { const size = cartSizes[product.id] || 'MEDIUM'; const unit = Math.round(product.basePrice * (size === 'LARGE' ? 1.25 : size === 'MEDIUM' ? 1.1 : 1)); return <li className="cart-item" key={product.id}><span>{product.name} · {size}<small>{money(unit)} / món</small></span><div className="quantity-control"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Giảm ${product.name}`}>−</button><b>{cart[product.id]}</b><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Tăng ${product.name}`}>+</button></div><strong>{money(unit * cart[product.id])}</strong></li>; })}</ul>}</div><div className="cart-total"><span>Tạm tính</span><strong>{money(total)}</strong><label className="payment-choice">Phương thức<select value={paymentMethod} disabled={submitting || !!paymentKey} onChange={(event) => setPaymentMethod(event.target.value as 'WALLET' | 'CARD')}><option value="WALLET">Ví mô phỏng</option><option value="CARD">Thẻ mô phỏng</option></select></label><button disabled={count === 0 || submitting} onClick={checkout}>{submitting ? 'Đang xử lý…' : 'Thanh toán mô phỏng'} <span>→</span></button>{checkoutMessage && <p className="checkout-message" role="status">{checkoutMessage}</p>}</div></section>
+    <section className="cart-panel" id="cart"><div><p className="eyebrow">YOUR LITTLE PICK-ME-UP</p><h2>Giỏ hàng <span className="count-pill">{count}</span></h2>{count === 0 ? <p>Giỏ đang chờ món ngon đầu tiên.</p> : <ul>{products.filter((product) => cart[product.id]).map((product) => { const size = cartSizes[product.id] || 'MEDIUM'; const toppings = cartToppings[product.id] || []; const unit = calculateUnitPrice(product.basePrice, size, toppings); return <li className="cart-item" key={product.id}><span>{product.name} · {size}<small>{toppings.map((id) => TOPPING_OPTIONS.find((option) => option.id === id)?.name).filter(Boolean).join(', ') || 'Không topping'} · {money(unit)} / món</small></span><div className="quantity-control"><button onClick={() => changeQuantity(product.id, -1)} aria-label={`Giảm ${product.name}`}>−</button><b>{cart[product.id]}</b><button onClick={() => changeQuantity(product.id, 1)} aria-label={`Tăng ${product.name}`}>+</button></div><strong>{money(unit * cart[product.id])}</strong></li>; })}</ul>}</div><div className="cart-total"><span>Tạm tính</span><strong>{money(total)}</strong><label className="payment-choice">Phương thức<select value={paymentMethod} disabled={submitting || !!paymentKey} onChange={(event) => setPaymentMethod(event.target.value as 'WALLET' | 'CARD')}><option value="WALLET">Ví mô phỏng</option><option value="CARD">Thẻ mô phỏng</option></select></label><button disabled={count === 0 || submitting} onClick={checkout}>{submitting ? 'Đang xử lý…' : 'Thanh toán mô phỏng'} <span>→</span></button>{checkoutMessage && <p className="checkout-message" role="status">{checkoutMessage}</p>}</div></section>
     {showHistory && <section className="orders-panel" id="orders"><p className="eyebrow">YOUR BREWLITE ORDERS</p><h2>Lịch sử đơn hàng</h2>{orderHistory.length === 0 ? <p>Chưa có đơn hàng nào.</p> : <ul>{orderHistory.map((order) => <li key={order.id}><span><strong>#{order.id.slice(0, 8)}</strong><small>{new Date(order.createdAt).toLocaleString('vi-VN')}</small></span><span className="order-state">{order.status}</span><strong>{money(Number(order.total))}</strong></li>)}</ul>}</section>}
     <footer><span>BREWLITE · PHA CHẬM MỘT NHỊP</span><span>Made for your little break ☕</span></footer>
-    {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelected(null)} aria-label="Đóng">×</button><p className="eyebrow">{selected.category}</p><h2 id="modal-title">{selected.name}</h2><p>{selected.description}</p><p className="modal-price">{money(selected.basePrice * (selectedSize === 'LARGE' ? 1.25 : selectedSize === 'MEDIUM' ? 1.1 : 1))}</p><label className="field-label">Kích cỡ<select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}><option value="SMALL">Small</option><option value="MEDIUM">Medium (+10%)</option><option value="LARGE">Large (+25%)</option></select></label><button className="modal-add" onClick={() => { add(selected.id, selectedSize); setSelected(null); }}>Thêm vào giỏ</button></section></div>}
+    {selected && <div className="modal-backdrop" role="presentation" onClick={() => setSelected(null)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setSelected(null)} aria-label="Đóng">×</button><p className="eyebrow">{selected.category}</p><h2 id="modal-title">{selected.name}</h2><p>{selected.description}</p><p className="modal-price">{money(calculateUnitPrice(selected.basePrice, selectedSize, selectedToppings))}</p><label className="field-label">Kích cỡ<select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value)}><option value="SMALL">Small</option><option value="MEDIUM">Medium (+10%)</option><option value="LARGE">Large (+25%)</option></select></label><fieldset className="topping-options"><legend>Topping</legend>{TOPPING_OPTIONS.map((item) => <label key={item.id}><input type="checkbox" checked={selectedToppings.includes(item.id)} onChange={(event) => setSelectedToppings((current) => event.target.checked ? [...current, item.id] : current.filter((value) => value !== item.id))} />{item.name} (+{money(item.price)})</label>)}</fieldset><button className="modal-add" onClick={() => { add(selected.id, selectedSize, selectedToppings); setSelected(null); }}>Thêm vào giỏ</button></section></div>}
     {authModal && <div className="modal-backdrop" role="presentation" onClick={() => setAuthModal(false)}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setAuthModal(false)} aria-label="Đóng">×</button><p className="eyebrow">BREWLITE ACCOUNT</p><h2 id="auth-title">{authMode === 'login' ? 'Chào bạn quay lại' : 'Tạo tài khoản'}</h2><form className="auth-form" onSubmit={submitAuth}>{authMode === 'register' && <label className="field-label">Tên hiển thị<input required minLength={2} value={authName} onChange={(event) => setAuthName(event.target.value)} autoComplete="name" /></label>}<label className="field-label">Email<input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" /></label><label className="field-label">Mật khẩu<input required type="password" minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} /></label>{authError && <p className="auth-error" role="alert">{authError}</p>}<button className="modal-add" type="submit">{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký'}</button></form><button className="auth-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}>{authMode === 'login' ? 'Chưa có tài khoản? Đăng ký' : 'Đã có tài khoản? Đăng nhập'}</button></section></div>}
   </main>;
 }

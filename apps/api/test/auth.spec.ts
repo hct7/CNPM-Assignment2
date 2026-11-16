@@ -3,7 +3,7 @@ import { signToken, verifyToken } from '../src/auth';
 describe('JWT authentication', () => {
   const oldSecret = process.env.JWT_SECRET;
   beforeAll(() => { process.env.JWT_SECRET = 'test-secret-with-more-than-24-characters'; });
-  afterAll(() => { process.env.JWT_SECRET = oldSecret; });
+  afterAll(() => { if (oldSecret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = oldSecret; });
 
   it('signs and verifies a user identity', () => {
     const token = signToken({ id: 'user-123', role: 'CUSTOMER' });

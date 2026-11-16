@@ -1,11 +1,32 @@
 name: CI
 on:
+  workflow_call:
   pull_request:
   push:
     branches: [main]
+permissions:
+  contents: read
 jobs:
   api:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: brewlite
+          POSTGRES_USER: brewlite
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U brewlite -d brewlite"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://brewlite:ci_test_password@localhost:5432/brewlite
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+      PAYMENT_MOCK_MODE: success
     defaults:
       run:
         working-directory: apps/api
@@ -17,7 +38,9 @@ jobs:
       - run: npm install
       - run: npm run lint
       - run: npm test
+      - run: npm run test:integration
       - run: npm run build
+
   web:
     runs-on: ubuntu-latest
     defaults:
@@ -32,3 +55,55 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+
+  browser-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: brewlite
+          POSTGRES_USER: brewlite
+          POSTGRES_PASSWORD: ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U brewlite -d brewlite"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://brewlite:ci_test_password@localhost:5432/brewlite
+      JWT_SECRET: ci-only-secret-with-at-least-32-characters
+      PAYMENT_MOCK_MODE: success
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: npm install
+      - name: Build API
+        working-directory: apps/api
+        run: npm run build
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm install
+      - name: Build web
+        working-directory: apps/web
+        run: npm run build
+      - name: Install Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - name: Run checkout end-to-end test
+        working-directory: apps/web
+        run: npm run test:e2e
+      - name: Upload browser traces on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brewlite-playwright-results
+          path: apps/web/test-results/
+          if-no-files-found: ignore

@@ -1,13 +1,12 @@
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
+  name TEXT NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT 'Coffee',
   base_price INTEGER NOT NULL CHECK (base_price >= 0),
   stock INTEGER NOT NULL DEFAULT 0 CHECK (stock >= 0),
   image_url TEXT,
-  active BOOLEAN NOT NULL DEFAULT TRUE,
-  UNIQUE(name)
+  active BOOLEAN NOT NULL DEFAULT TRUE
 );
 INSERT INTO products (name, description, category, base_price, stock) VALUES
  ('Cà phê sữa đá', 'Espresso đậm vị cùng sữa đặc và đá.', 'Coffee', 35000, 40),
@@ -26,7 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id),
-  status TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('PENDING','PAID','PREPARING','READY','COMPLETED','PAYMENT_FAILED','CANCELLED')),
   total INTEGER NOT NULL CHECK (total >= 0),
   idempotency_key TEXT NOT NULL,
   request_hash TEXT NOT NULL,
@@ -40,15 +39,16 @@ CREATE TABLE IF NOT EXISTS order_items (
   product_id INTEGER NOT NULL REFERENCES products(id),
   product_name TEXT NOT NULL,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
-  size TEXT NOT NULL,
+  size TEXT NOT NULL CHECK (size IN ('SMALL','MEDIUM','LARGE')),
+  toppings JSONB NOT NULL DEFAULT '[]'::jsonb,
   unit_price INTEGER NOT NULL CHECK (unit_price >= 0),
   line_total INTEGER NOT NULL CHECK (line_total >= 0)
 );
 CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY,
   order_id UUID NOT NULL REFERENCES orders(id),
-  method TEXT NOT NULL,
-  status TEXT NOT NULL,
+  method TEXT NOT NULL CHECK (method IN ('WALLET','CARD')),
+  status TEXT NOT NULL CHECK (status IN ('PENDING','SUCCESS','FAILED')),
   amount INTEGER NOT NULL CHECK (amount >= 0),
   idempotency_key TEXT NOT NULL,
   provider_ref TEXT,

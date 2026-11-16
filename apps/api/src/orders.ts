@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Headers, Inject, NotFoundException, Param, ParseUUIDPipe, Post, BadRequestException, ConflictException, Patch, ForbiddenException } from '@nestjs/common';
-import { IsArray, IsIn, IsInt, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -10,6 +10,7 @@ class OrderLineDto {
   @IsInt() @Min(1) productId!: number;
   @IsInt() @Min(1) @Max(20) quantity!: number;
   @IsString() @IsIn(['SMALL', 'MEDIUM', 'LARGE']) size!: string;
+  @IsOptional() @IsArray() @ArrayUnique() @ArrayMaxSize(3) @IsIn(['EXTRA_SHOT', 'PEARL', 'CREAM'], { each: true }) toppings?: string[];
 }
 class CreateOrderDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => OrderLineDto) items!: OrderLineDto[];
@@ -34,7 +35,7 @@ export class OrdersController {
       const existing = await client.query('SELECT * FROM orders WHERE user_id=$1 AND idempotency_key=$2', [user.sub, key]);
       if (existing.rows[0]) {
         if (existing.rows[0].request_hash !== requestHash) throw new ConflictException('Idempotency-Key đã dùng với nội dung khác');
-        const items = await client.query('SELECT product_id AS "productId",product_name AS name,quantity,size,unit_price AS "unitPrice",line_total AS "lineTotal" FROM order_items WHERE order_id=$1', [existing.rows[0].id]);
+        const items = await client.query('SELECT product_id AS "productId",product_name AS name,quantity,size,toppings,unit_price AS "unitPrice",line_total AS "lineTotal" FROM order_items WHERE order_id=$1', [existing.rows[0].id]);
         await client.query('COMMIT');
         return { ...existing.rows[0], items: items.rows, replayed: true };
       }
@@ -49,15 +50,17 @@ export class OrdersController {
         if (available < line.quantity) throw new ConflictException(`Sản phẩm ${p.rows[0].name} không đủ tồn kho`);
         remainingStock.set(line.productId, available - line.quantity);
         const multiplier = line.size === 'LARGE' ? 1.25 : line.size === 'MEDIUM' ? 1.1 : 1;
-        const unitPrice = Math.round(Number(p.rows[0].base_price) * multiplier);
+        const toppingPrices: Record<string, number> = { EXTRA_SHOT: 8000, PEARL: 6000, CREAM: 6000 };
+        const toppings = line.toppings || [];
+        const unitPrice = Math.round(Number(p.rows[0].base_price) * multiplier) + toppings.reduce((sum, topping) => sum + toppingPrices[topping], 0);
         const lineTotal = unitPrice * line.quantity;
         total += lineTotal;
-        lines.push({ ...line, name: p.rows[0].name, unitPrice, lineTotal });
+        lines.push({ ...line, toppings, name: p.rows[0].name, unitPrice, lineTotal });
       }
       await client.query('INSERT INTO orders(id,user_id,status,total,idempotency_key,request_hash) VALUES($1,$2,$3,$4,$5,$6)', [orderId, user.sub, 'PENDING', total, key, requestHash]);
       for (const line of lines) {
         await client.query('UPDATE products SET stock=stock-$1 WHERE id=$2', [line.quantity, line.productId]);
-        await client.query('INSERT INTO order_items(order_id,product_id,product_name,quantity,size,unit_price,line_total) VALUES($1,$2,$3,$4,$5,$6,$7)', [orderId, line.productId, line.name, line.quantity, line.size, line.unitPrice, line.lineTotal]);
+        await client.query('INSERT INTO order_items(order_id,product_id,product_name,quantity,size,toppings,unit_price,line_total) VALUES($1,$2,$3,$4,$5,$6::jsonb,$7,$8)', [orderId, line.productId, line.name, line.quantity, line.size, JSON.stringify(line.toppings), line.unitPrice, line.lineTotal]);
       }
       await client.query('COMMIT');
       return { id: orderId, status: 'PENDING', total, items: lines, replayed: false };

@@ -12,22 +12,22 @@ cloud "CI (GitHub Actions target)" as CI {
  artifact "Docker images tagged by SHA" as I
  Q --> I
 }
-cloud "Container registry (TBD)" as R
-node "Production platform (TBD)" as P {
- node "HTTPS ingress / CDN" as IN
+cloud "GitHub Container Registry" as R
+node "Production VPS target (awaiting provisioning)" as P {
+node "Caddy ingress / TLS" as IN
  artifact "Next.js web service" as W
  artifact "NestJS API service" as A
- database "Managed PostgreSQL\nprivate network + persistent storage" as D
+ database "PostgreSQL container\nprivate backend network + persistent volume" as D
  IN --> W : HTTPS 443
  W --> A : HTTPS/private service
  A --> D : TCP 5432 (private)
  note right of A
-  Secrets: platform secret store
+  Secrets: VPS .env outside repository
   Health: /health
-  Logs: platform log stream
+  Logs: docker compose logs
  end note
 }
 I --> R : push SHA image
 R --> P : deploy
-CI ..> P : deploy token (CI secret)
+ CI ..> P : SSH deploy key (CI secret)
 @enduml
