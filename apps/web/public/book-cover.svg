@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="690" viewBox="0 0 460 690" role="img" aria-label="BrewLite">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="34%" r="62%">
+      <stop offset="0%" stop-color="#3a2414"/>
+      <stop offset="55%" stop-color="#160e09"/>
+      <stop offset="100%" stop-color="#080506"/>
+    </radialGradient>
+    <linearGradient id="copper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f2c08a"/>
+      <stop offset="50%" stop-color="#e2a15c"/>
+      <stop offset="100%" stop-color="#b4702c"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect width="460" height="690" fill="url(#glow)"/>
+
+  <circle cx="230" cy="250" r="150" fill="none" stroke="url(#copper)" stroke-opacity="0.35"/>
+  <circle cx="230" cy="250" r="185" fill="none" stroke="url(#copper)" stroke-opacity="0.16"/>
+  <circle cx="230" cy="250" r="118" fill="none" stroke="url(#copper)" stroke-opacity="0.22" stroke-dasharray="2 8"/>
+  <circle cx="230" cy="250" r="96" fill="#e2a15c" opacity="0.18" filter="url(#soft)"/>
+
+  <g fill="none" stroke="url(#copper)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M176 226h108v62a54 54 0 0 1-54 54h0a54 54 0 0 1-54-54z"/>
+    <path d="M284 240h18a26 26 0 0 1 0 52h-18"/>
+    <path d="M196 342h84"/>
+    <path d="M212 196c-10-14 10-22 0-36"/>
+    <path d="M246 196c-10-14 10-22 0-36"/>
+  </g>
+
+  <text x="230" y="470" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="58" letter-spacing="1" fill="#f7f0e6">BrewLite</text>
+  <line x1="150" y1="500" x2="310" y2="500" stroke="url(#copper)" stroke-opacity="0.6"/>
+  <text x="230" y="536" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" letter-spacing="6" fill="#e2a15c">PHA CHẬM MỘT NHỊP</text>
+  <text x="230" y="590" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="10" letter-spacing="4" fill="#a89a8d">MENU · 2026</text>
+
+  <circle cx="230" cy="640" r="14" fill="none" stroke="url(#copper)" stroke-opacity="0.7"/>
+  <text x="230" y="645" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#e2a15c">B</text>
+</svg>

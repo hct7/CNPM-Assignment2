@@ -7,7 +7,11 @@ import { runMigrations } from './migrate';
 async function bootstrap() {
   await runMigrations();
   const app = await NestFactory.create(AppModule);
-  app.enableCors({ origin: process.env.WEB_ORIGIN || 'http://localhost:3000' });
+  const allowedOrigins = (process.env.WEB_ORIGIN || 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  app.enableCors({ origin: allowedOrigins });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.listen(Number(process.env.PORT || 3001), '0.0.0.0');
 }

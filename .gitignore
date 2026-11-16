@@ -10,4 +10,6 @@ release.env
 .env.*
 !.env.example
 *.log
+*.tsbuildinfo
+tmp/
 .DS_Store

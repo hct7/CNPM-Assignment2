@@ -8,6 +8,9 @@ Yêu cầu Node.js 22+ và Docker Compose. Sao chép `.env.example` thành `.env
 ## Kiểm tra
 Chạy `npm install` ở `apps/api` và `apps/web`; sau đó `npm run lint`, `npm test`, `npm run build` trong từng app. API integration test cần PostgreSQL local: đặt `DATABASE_URL=postgresql://brewlite:local_dev_only_change_me@localhost:5432/brewlite` và `JWT_SECRET` trong terminal rồi chạy `npm run test:integration` tại `apps/api`. Browser E2E: khởi chạy `docker compose up --build`, cài Chromium bằng `npx playwright install chromium`, rồi chạy `npm run test:e2e` tại `apps/web`; Playwright kết nối tới web/API đang chạy. CI nằm ở `.github/workflows/ci.yml`.
 
+## Giao diện
+Web dùng Tailwind CSS 4 (entry `apps/web/app/styles.css`, token theme `ink`/`cream`/`copper`/`leaf`) và dark theme mặc định. Các component hiệu ứng lấy từ registry ShitUI/RareUI qua shadcn (`apps/web/components.json` khai báo registry `@shitui`), source nằm trong `apps/web/components/ui/`; thêm component mới bằng `npx shadcn@latest add @shitui/<tên>`. Font nạp bằng `next/font/google` trong `apps/web/app/layout.tsx` (DM Sans cho sans, Playfair Display cho serif, có subset tiếng Việt), không dùng `@import` Google Fonts.
+
 ## Cấu hình và bảo mật
 Xem `.env.example`. Không commit `.env`, token hoặc secret. Thanh toán là mô phỏng, không lưu thông tin thẻ.
 
