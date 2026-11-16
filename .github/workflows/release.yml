@@ -1,89 +1,86 @@
-name: Release and deploy
+name: Release and deploy to Vercel
 on:
   push:
     tags: ['v*.*.*']
 permissions:
   contents: write
-  packages: write
+  deployments: write
 jobs:
   quality:
     uses: ./.github/workflows/ci.yml
 
-  publish-images:
-    needs: quality
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate deployment URL
-        env:
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
-        run: test -n "$NEXT_PUBLIC_API_URL"
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set image prefix
-        id: image
-        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-      - name: Build and push API image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./apps/api
-          push: true
-          tags: ${{ steps.image.outputs.prefix }}-api:${{ github.sha }}
-      - name: Build and push web image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./apps/web
-          push: true
-          build-args: |
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
-          tags: ${{ steps.image.outputs.prefix }}-web:${{ github.sha }}
-
   deploy-production:
-    needs: publish-images
+    needs: quality
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ vars.WEB_PUBLIC_URL }}
+      url: ${{ vars.WEB_PRODUCTION_URL }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      API_PROJECT_ID: ${{ secrets.VERCEL_API_PROJECT_ID }}
+      WEB_PROJECT_ID: ${{ secrets.VERCEL_WEB_PROJECT_ID }}
+      API_PRODUCTION_URL: ${{ vars.API_PRODUCTION_URL }}
+      WEB_PRODUCTION_URL: ${{ vars.WEB_PRODUCTION_URL }}
     steps:
       - uses: actions/checkout@v4
-      - name: Configure SSH
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate Vercel configuration
         run: |
-          test -n "$DEPLOY_SSH_KEY"
-          test -n "$DEPLOY_KNOWN_HOSTS"
-          install -m 700 -d "$RUNNER_TEMP/brewlite-ssh"
-          printf '%s' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/brewlite-ssh/id_ed25519"
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/brewlite-ssh/known_hosts"
-          chmod 600 "$RUNNER_TEMP/brewlite-ssh/id_ed25519" "$RUNNER_TEMP/brewlite-ssh/known_hosts"
-      - name: Copy deployment files
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          test -n "$VERCEL_TOKEN"
+          test -n "$VERCEL_ORG_ID"
+          test -n "$API_PROJECT_ID"
+          test -n "$WEB_PROJECT_ID"
+          test -n "$API_PRODUCTION_URL"
+          test -n "$WEB_PRODUCTION_URL"
+      - name: Install Vercel CLI
+        run: npm install --global vercel@48.4.0
+      - name: Deploy API and web, smoke test, rollback on failure
+        shell: bash
         run: |
-          test -n "$DEPLOY_HOST"
-          test -n "$DEPLOY_USER"
-          SSH="ssh -i $RUNNER_TEMP/brewlite-ssh/id_ed25519 -o UserKnownHostsFile=$RUNNER_TEMP/brewlite-ssh/known_hosts -o StrictHostKeyChecking=yes"
-          SCP="scp -i $RUNNER_TEMP/brewlite-ssh/id_ed25519 -o UserKnownHostsFile=$RUNNER_TEMP/brewlite-ssh/known_hosts -o StrictHostKeyChecking=yes"
-          $SSH "$DEPLOY_USER@$DEPLOY_HOST" 'mkdir -p /opt/brewlite'
-          $SCP deploy/production/docker-compose.yml deploy/production/Caddyfile deploy/production/deploy-release.sh "$DEPLOY_USER@$DEPLOY_HOST:/opt/brewlite/"
-      - name: Deploy and smoke test with rollback
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-        run: |
-          ssh -i "$RUNNER_TEMP/brewlite-ssh/id_ed25519" \
-            -o UserKnownHostsFile="$RUNNER_TEMP/brewlite-ssh/known_hosts" \
-            -o StrictHostKeyChecking=yes \
-            "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd /opt/brewlite && chmod 700 deploy-release.sh && ./deploy-release.sh '${GITHUB_SHA}'"
+          set -Eeuo pipefail
+          api_deployed=0
+          web_deployed=0
+          rollback() {
+            status=$?
+            if [[ "$status" -ne 0 ]]; then
+              echo "Release failed; rolling back deployed Vercel projects" >&2
+              if [[ "$web_deployed" -eq 1 ]]; then
+                (cd apps/web && vercel rollback --non-interactive --token="$VERCEL_TOKEN") || true
+              fi
+              if [[ "$api_deployed" -eq 1 ]]; then
+                (cd apps/api && vercel rollback --non-interactive --token="$VERCEL_TOKEN") || true
+              fi
+            fi
+            exit "$status"
+          }
+          trap rollback EXIT
+
+          (cd apps/api && \
+            VERCEL_PROJECT_ID="$API_PROJECT_ID" vercel pull --yes --environment=production --token="$VERCEL_TOKEN" && \
+            VERCEL_PROJECT_ID="$API_PROJECT_ID" vercel build --prod --token="$VERCEL_TOKEN" && \
+            VERCEL_PROJECT_ID="$API_PROJECT_ID" vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          api_deployed=1
+
+          (cd apps/web && \
+            VERCEL_PROJECT_ID="$WEB_PROJECT_ID" vercel pull --yes --environment=production --token="$VERCEL_TOKEN" && \
+            VERCEL_PROJECT_ID="$WEB_PROJECT_ID" vercel build --prod --token="$VERCEL_TOKEN" && \
+            VERCEL_PROJECT_ID="$WEB_PROJECT_ID" vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          web_deployed=1
+
+          for attempt in $(seq 1 18); do
+            if curl --silent --show-error --fail "$API_PRODUCTION_URL/health" >/dev/null && \
+              curl --silent --show-error --fail "$WEB_PRODUCTION_URL/" >/dev/null; then
+              echo "Production smoke tests passed"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Production smoke tests failed" >&2
+          exit 1
+
       - name: Publish GitHub release notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

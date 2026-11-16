@@ -26,7 +26,7 @@ BrewLite là ứng dụng đặt đồ uống cho một cửa hàng cà phê. Kh
 - Next.js, NestJS và PostgreSQL là bắt buộc. HTTPS khi triển khai; nội bộ Docker dùng network riêng.
 - Giá lưu VND số nguyên; máy chủ là nguồn sự thật cho giá và tồn kho.
 - Thanh toán mô phỏng thành công/thất bại; không lưu thông tin thẻ.
-- Tên thành viên, MSSV, repository từ xa, hosting, registry và URL production chưa được cung cấp; cần nhóm bổ sung.
+- Tên thành viên, MSSV và URL production chưa được cung cấp; hosting target là Vercel theo yêu cầu triển khai, cần nhóm tạo project web/API và database production.
 
 ## Rủi ro
 | Rủi ro | Tác động | Giảm thiểu |

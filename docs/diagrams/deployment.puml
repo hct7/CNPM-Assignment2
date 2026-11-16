@@ -1,5 +1,5 @@
 @startuml
-title BrewLite - deployment topology (production target; provider TBD)
+title BrewLite - deployment topology (Vercel production target)
 node "Local developer" {
  artifact "Browser" as B1
  node "Docker Compose" { artifact "Next.js :3000" as W1; artifact "NestJS :3001" as A1; database "PostgreSQL :5432" as D1 }
@@ -7,27 +7,22 @@ node "Local developer" {
  B1 --> A1 : HTTPS API
  A1 --> D1
 }
-cloud "CI (GitHub Actions target)" as CI {
+cloud "CI/CD (GitHub Actions)" as CI {
  artifact "Lint / Test / Build" as Q
- artifact "Docker images tagged by SHA" as I
+ artifact "Release artifacts tagged by Git SHA/version" as I
  Q --> I
 }
-cloud "GitHub Container Registry" as R
-node "Production VPS target (awaiting provisioning)" as P {
-node "Caddy ingress / TLS" as IN
- artifact "Next.js web service" as W
- artifact "NestJS API service" as A
- database "PostgreSQL container\nprivate backend network + persistent volume" as D
- IN --> W : HTTPS 443
- W --> A : HTTPS/private service
- A --> D : TCP 5432 (private)
- note right of A
-  Secrets: VPS .env outside repository
-  Health: /health
-  Logs: docker compose logs
- end note
+cloud "Vercel (awaiting project setup)" as V {
+ artifact "Next.js Web project\nHTTPS + preview/production" as W
+ artifact "NestJS API Function\nHTTPS + /health" as A
+ W --> A : HTTPS API
 }
-I --> R : push SHA image
-R --> P : deploy
- CI ..> P : SSH deploy key (CI secret)
+database "Managed PostgreSQL\nprivate credentials / TLS" as D
+A --> D : TLS PostgreSQL
+note right of V
+ Secrets: Vercel project environment variables
+ Rollback: previous production deployment
+end note
+I --> V : deploy API and web after quality gate
+CI ..> V : Vercel CLI token (GitHub Environment secret)
 @enduml

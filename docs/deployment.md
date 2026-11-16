@@ -1,26 +1,27 @@
 # Deployment và bàn giao
 
-## Local
-1. Cài Docker Desktop và Compose.
-2. Sao chép `.env.example` thành `.env`, thay JWT secret cho local.
-3. `docker compose up --build`.
-4. Web: http://localhost:3000; API health: http://localhost:3001/health.
-5. Dừng bằng `docker compose down`; dữ liệu trong volume `postgres_data`.
+## Mục tiêu production
 
-API chạy migration version hóa và seed khi khởi động. Không dùng `.env` local làm secret production.
+Production dùng **Vercel** cho hai project độc lập trong cùng repository: Next.js (`apps/web`) và NestJS (`apps/api`). PostgreSQL là dịch vụ managed bên ngoài, chỉ API có thông tin kết nối. Cả hai URL dùng HTTPS do Vercel cấp. Không chạy database trong Vercel Function và không mở database công khai.
 
-## VPS production target
+Vercel hỗ trợ Next.js trực tiếp và nhận diện NestJS từ `apps/api/src/main.ts`; API chạy như một Vercel Function. Local Docker Compose vẫn được giữ để tái tạo web/API/PostgreSQL khi phát triển và kiểm thử tích hợp.
 
-Production Compose dùng Caddy để cấp HTTPS và reverse proxy hai domain, Next.js và NestJS chạy trong mạng riêng, PostgreSQL chỉ ở backend network với persistent volume. Không publish cổng DB ra host. API migration có version và khóa advisory để tránh hai replica chạy cùng migration.
+## Tạo projects và cấu hình môi trường
 
-1. Tạo VPS Linux có Docker Compose, mở inbound 80/443 và SSH giới hạn theo IP; trỏ `WEB_DOMAIN` và `API_DOMAIN` về VPS.
-2. Tạo GitHub Container Registry packages cho repository. Nếu package private, đăng nhập GHCR trên VPS bằng token read-only; giữ credential ngoài repository.
-3. Tạo `/opt/brewlite/.env` từ `deploy/production/.env.example`; điền mật khẩu/secret mạnh, `IMAGE_PREFIX` chữ thường, domains thật và `DATABASE_URL` có password URL-encoded. File này chỉ nằm trên server.
-4. Thêm GitHub repository variable `NEXT_PUBLIC_API_URL=https://<API_DOMAIN>`.
-5. Tạo GitHub Environment `production`; thêm secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`. Host key phải được xác minh độc lập trước khi lưu.
-6. Push tag semver `vX.Y.Z`. `.github/workflows/release.yml` gọi CI, build/push image theo SHA, chuyển compose/Caddy/deploy script qua SSH, chạy migration khi API khởi động, smoke test URL và rollback về image trước nếu health check lỗi; sau đó tạo GitHub release notes.
-7. Ghi lại URL, SHA, log pipeline và release. Quay video luồng menu→đặt hàng→PAID; làm Sprint Review/Retrospective.
+1. Tạo một PostgreSQL database managed (ví dụ qua Vercel Marketplace). Bật SSL theo yêu cầu provider; giữ connection string và password ngoài Git.
+2. Tạo Vercel project `brewlite-api` với Root Directory `apps/api`, framework NestJS/auto-detected. Tạo project `brewlite-web` với Root Directory `apps/web`, framework Next.js/auto-detected. Gắn cả project vào cùng repository nếu cần deployment previews.
+3. Trong project API, đặt `DATABASE_URL`, `JWT_SECRET` (ít nhất 32 ký tự ngẫu nhiên), `WEB_ORIGIN` bằng production URL frontend và `PAYMENT_MOCK_MODE=success`. Chọn Production environment; thêm giá trị Preview riêng khi dùng preview URLs.
+4. Trong project web, đặt `NEXT_PUBLIC_API_URL` thành URL production của API (không thêm dấu `/` cuối). Redeploy sau khi đổi biến build-time.
+5. Lấy Vercel Access Token, Organization ID và Project ID của từng project. Trong GitHub repository tạo Environment `production` với secrets `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_API_PROJECT_ID`, `VERCEL_WEB_PROJECT_ID`; thêm variables `API_PRODUCTION_URL` và `WEB_PRODUCTION_URL` (đầy đủ `https://...`). Không commit token, connection string hay JWT secret.
+6. Bảo vệ nhánh `main`: yêu cầu CI thành công trước merge. Tạo tag `vX.Y.Z` để chạy pipeline release. Workflow `.github/workflows/release.yml` gọi CI, pull cấu hình Vercel, build artifacts, deploy API rồi web, kiểm tra `/health` và trang web qua HTTPS; nếu deploy hoặc smoke test lỗi, workflow yêu cầu Vercel rollback project đã triển khai.
+7. Ghi lại URL production, commit/tag, link workflow thành công và release notes. Chạy demo menu → tạo đơn → thanh toán → lịch sử; hoàn tất Sprint Review và Retrospective.
 
-Migration cần tương thích ngược trước khi deploy. Rollback đổi image về SHA trước; migration phá hủy dữ liệu cần kế hoạch riêng. `PAYMENT_MOCK_MODE=fail` dùng để trình diễn nhánh thanh toán lỗi; production demo mặc định `success`.
+## Database và vận hành
 
-**Production chưa được triển khai từ workspace này:** chưa có remote GitHub, DNS, VPS, SSH secrets hay URL để kiểm tra. Cấu hình pipeline đã chuẩn bị nhưng phải cung cấp các giá trị môi trường trên và push tag trước khi có thể xác nhận delivery.
+API chạy migration version hóa khi khởi tạo. Migration runner giữ advisory lock trong PostgreSQL để các cold start/instance không áp dụng cùng migration đồng thời; mỗi migration được ghi nhận trong bảng `schema_migrations`. Dùng PostgreSQL provider có SSL và giới hạn kết nối phù hợp serverless. Connection pooling có thể đặt qua provider/pooler nếu giới hạn kết nối yêu cầu.
+
+Vercel Functions không phải tiến trình nền thường trực. Không dùng lịch chạy trong bộ nhớ; nếu bổ sung tác vụ định kỳ, chuyển sang Vercel Cron hoặc dịch vụ job riêng. Theo dõi function logs/health sau deploy. Rollback ứng dụng qua Vercel không tự đảo migration phá hủy dữ liệu; mọi thay đổi schema phải tương thích ngược trước khi phát hành.
+
+## Trạng thái bằng chứng
+
+Repository hiện đã có cấu hình release workflow và hướng dẫn Vercel; **production chưa được deploy**. Cần tạo/cấu hình hai Vercel projects, managed PostgreSQL, GitHub Environment/secrets/variables rồi push tag và ghi lại log/URL thật. Không dùng cấu hình mục tiêu làm bằng chứng production.

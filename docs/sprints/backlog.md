@@ -13,5 +13,5 @@
 - BL-07 giỏ, tạo đơn transaction và idempotency.
 - BL-08 payment mock, lịch sử và trạng thái.
 - BL-09 integration + E2E từ menu đến xác nhận.
-- BL-10 Compose, health, image build, deploy/smoke/rollback.
+- BL-10 Compose, health, Vercel deploy/smoke/rollback và cấu hình PostgreSQL managed.
 - Sprint review/retrospective cần bổ sung sau khi nhóm thực hiện và có bằng chứng.

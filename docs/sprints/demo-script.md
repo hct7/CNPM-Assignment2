@@ -8,5 +8,5 @@
 4. **Tài khoản (45s):** đăng ký/đăng nhập demo bằng email thử nghiệm.
 5. **Checkout thành công (60s):** chọn Ví/Thẻ mô phỏng, thanh toán, chỉ mã đơn và trạng thái PAID; mở lịch sử.
 6. **Lỗi thanh toán (45s):** trên môi trường demo bật `PAYMENT_MOCK_MODE=fail`, thanh toán, chỉ PAYMENT_FAILED và giỏ vẫn còn; bật success rồi thử lại.
-7. **Vận hành (45s):** gọi `/health`, chỉ CI xanh, image tag theo SHA và release/URL HTTPS nếu đã deploy.
+7. **Vận hành (45s):** gọi API `/health`, chỉ CI xanh, tag release, GitHub Actions deploy Vercel và URL HTTPS nếu đã deploy.
 8. **Kết thúc (30s):** nêu feedback/sprint review và retrospective thật của nhóm.
