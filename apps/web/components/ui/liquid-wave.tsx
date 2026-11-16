@@ -134,7 +134,7 @@ export default function LiquidWave({
 
       init(container: HTMLElement) {
         this.container = container;
-        container.addEventListener('mousemove', this._onMouseMove, false);
+        window.addEventListener('mousemove', this._onGlobalMouseMove, false);
         container.addEventListener('touchstart', this._onTouchStart, false);
         container.addEventListener('touchmove', this._onTouchMove, false);
         container.addEventListener('mouseenter', this._onMouseEnter, false);
@@ -144,7 +144,7 @@ export default function LiquidWave({
 
       dispose() {
         if (!this.container) return;
-        this.container.removeEventListener('mousemove', this._onMouseMove, false);
+        window.removeEventListener('mousemove', this._onGlobalMouseMove, false);
         this.container.removeEventListener('touchstart', this._onTouchStart, false);
         this.container.removeEventListener('touchmove', this._onTouchMove, false);
         this.container.removeEventListener('mouseenter', this._onMouseEnter, false);
@@ -186,6 +186,17 @@ export default function LiquidWave({
         }
         this.setCoords(event.clientX, event.clientY);
         this.hasUserControl = true;
+      };
+
+      _onGlobalMouseMove = (event: MouseEvent) => {
+        if (!this.container) return;
+        const rect = this.container.getBoundingClientRect();
+        this.isHoverInside =
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom;
+        if (this.isHoverInside) this._onMouseMove(event);
       };
 
       _onTouchStart = (event: TouchEvent) => {

@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic';
 import { calculateCartTotal, calculateUnitPrice, TOPPING_OPTIONS } from '../lib/cart-utils.mjs';
 import { AnimatedTabs } from '@/components/ui/animated-tab';
 import WordMagnet from '@/components/ui/word-magnet';
-import { VaporSmokeText } from '@/components/ui/vapor-smoke-text';
 import LoadingSpinner from '@/components/ui/loading-spinner';
 import { LiquidTooltip } from '@/components/ui/liquid-tooltip';
 import { MagneticScatterText } from '@/components/ui/magnetic-scatter-text';
@@ -24,16 +23,16 @@ const LiquidWave = dynamic(() => import('@/components/ui/liquid-wave'), {
   ),
 });
 
-type Product = { id: number; name: string; description: string; category: string; basePrice: number; stock: number };
+type Product = { id: number; name: string; description: string; category: string; basePrice: number; stock: number; imageUrl?: string | null };
 type OrderSummary = { id: string; status: string; total: number; createdAt: string };
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-const icons: Record<string, string> = { Coffee: '☕', Tea: '🍵' };
-const artStyles = [
-  { media: 'from-[#2a1409] via-[#150c07] to-[#080504]', glow: 'rgba(252,76,1,0.45)' },
-  { media: 'from-[#24180a] via-[#14100a] to-[#080604]', glow: 'rgba(255,200,61,0.32)' },
-  { media: 'from-[#0c211a] via-[#0a1510] to-[#050a07]', glow: 'rgba(126,231,135,0.3)' },
-  { media: 'from-[#1a1208] via-[#100c07] to-[#060504]', glow: 'rgba(255,138,77,0.35)' },
-];
+const fallbackProductPhoto = 'https://images.unsplash.com/photo-1664515725366-e8328e9dc834?auto=format&fit=crop&w=1000&q=85';
+const productPhotos: Record<number, string> = {
+  1: fallbackProductPhoto,
+  2: 'https://product.hstatic.net/200000626331/product/bac-xiu-vn-white-coffee-_hot-iced__84410b23a7594920a2ab145622b9fd04_1024x1024.jpg',
+  3: 'https://artfultea.com/cdn/shop/files/0-1_2f43135a-b317-47d8-8f56-5e79f8a4265f.jpg?v=1763234911&width=1346',
+  4: 'https://images.unsplash.com/photo-1581996323441-538096e854b9?auto=format&fit=crop&w=1000&q=85',
+};
 const money = (amount: number) => new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
 
 const avatar = (emoji: string) =>
@@ -256,13 +255,27 @@ export default function Home() {
       </div>
     </header>
 
-    <section id="home" className="relative scroll-mt-24 overflow-hidden px-5 pb-16 pt-16 md:pb-24 md:pt-20">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-        <div className="dot-grid absolute inset-x-0 top-0 h-[34rem] opacity-40 [mask-image:radial-gradient(circle_at_50%_18%,black,transparent_70%)]" />
-        <div className="absolute left-1/2 top-[-16rem] h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(252,76,1,0.2),transparent_66%)] blur-3xl" />
+    <section id="home" className="relative isolate flex min-h-[calc(100svh-5rem)] scroll-mt-24 items-center overflow-hidden px-5 py-16 md:py-20">
+      <div aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden bg-[#080706]">
+        <LiquidWave
+          color1="#ff6a1a"
+          color2="#ffae63"
+          color3="#ffe6c4"
+          resolution={0.6}
+          autoSpeed={0.9}
+          autoIntensity={6}
+          autoResumeDelay={300}
+          autoRampDuration={0.3}
+          takeoverDuration={0.2}
+          className="absolute inset-0 h-full w-full"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.3)_0%,rgba(5,5,5,0.18)_42%,rgba(5,5,5,0.52)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(5,5,5,0.46)_0%,rgba(5,5,5,0.24)_36%,transparent_72%)]" />
+        <div className="dot-grid absolute inset-0 opacity-20 [mask-image:radial-gradient(ellipse_at_center,black,transparent_78%)]" />
       </div>
 
-      <div className="mx-auto max-w-3xl text-center">
+      <div className="relative z-10 mx-auto w-full max-w-3xl text-center">
+        <div className="mb-5 font-mono text-[9px] uppercase tracking-[0.34em] text-cream/55">BrewLite signature <span className="px-2 text-accent">·</span> Chạm vào sóng</div>
         <div className="chip">
           <span className="size-1.5 rounded-full bg-accent" aria-hidden="true" />
           <SoundText text="Pha chậm một nhịp" className="font-mono text-[10px] uppercase tracking-[0.2em] text-cream/60" basePitch={300} />
@@ -316,38 +329,6 @@ export default function Home() {
         </dl>
       </div>
 
-      <div className="mx-auto mt-14 w-full max-w-5xl">
-        <div className="surface-card p-2 shadow-[0_70px_180px_-90px_rgba(252,76,1,0.6)]">
-          <div className="relative h-[19rem] overflow-hidden rounded-[26px] bg-black md:h-[26rem]">
-            <LiquidWave
-              color1="#ff6a1a"
-              color2="#ffae63"
-              color3="#ffe6c4"
-              resolution={0.6}
-              autoSpeed={0.9}
-              autoIntensity={6}
-              autoResumeDelay={300}
-              autoRampDuration={0.3}
-              takeoverDuration={0.2}
-              className="h-full w-full"
-            />
-            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent" />
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_125%,rgba(0,0,0,0.92),transparent_60%)]" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between p-5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-cream/55">BrewLite signature</span>
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-cream/55">01</span>
-            </div>
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-5 pt-20">
-              <VaporSmokeText text="Khuấy nhẹ" className="justify-start font-mono text-[10px] uppercase tracking-[0.4em] text-cream/60" />
-              <p className="mt-2 font-rund text-2xl font-semibold tracking-[-0.02em] text-cream">Chạm vào sóng</p>
-            </div>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center justify-between px-2 font-mono text-[10px] uppercase tracking-[0.18em] text-cream/30">
-          <span>Pha chậm · Rang mộc · Đá trong</span>
-          <span className="hidden sm:inline">Kéo chuột trên mặt nước</span>
-        </div>
-      </div>
     </section>
 
     <section id="menu" className="relative scroll-mt-24 border-t border-white/5 bg-ink-soft py-20">
@@ -380,16 +361,15 @@ export default function Home() {
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {filtered.map((product, index) => {
-            const art = artStyles[index % artStyles.length];
+            const photo = product.imageUrl || productPhotos[product.id];
             return <article className="group flex flex-col rounded-[32px] bg-surface-2 p-2 shadow-edge transition-colors duration-300 hover:bg-[#181818]" key={product.id}>
               <button
-                className={cn('relative flex h-48 w-full items-center justify-center overflow-hidden rounded-[26px] bg-gradient-to-br sm:h-56', art.media)}
+                className="relative flex h-48 w-full items-center justify-center overflow-hidden rounded-[26px] bg-surface sm:h-56"
                 onClick={() => { setSelected(product); setSelectedSize('MEDIUM'); setSelectedToppings([]); }}
                 aria-label={`Xem ${product.name}`}
               >
-                <span aria-hidden="true" className="dot-grid absolute inset-0 opacity-30 [mask-image:radial-gradient(circle_at_50%_45%,black,transparent_72%)]" />
-                <span aria-hidden="true" className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 32%, ${art.glow}, transparent 62%)` }} />
-                <span aria-hidden="true" className="text-6xl drop-shadow-[0_18px_30px_rgba(0,0,0,0.55)] transition-transform duration-500 group-hover:scale-105">{icons[product.category] || '🥤'}</span>
+                {photo && <img src={photo} alt={product.name} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = fallbackProductPhoto; }} className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" />}
+                <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" />
                 <span className="absolute left-3 top-3 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-cream/60 backdrop-blur">{product.category}</span>
                 <span aria-hidden="true" className="absolute right-3 top-3 grid size-8 place-items-center rounded-full bg-black/45 text-cream/70 opacity-0 backdrop-blur transition duration-300 group-hover:opacity-100">
                   <ArrowUpRight className="size-3.5" />
@@ -420,25 +400,6 @@ export default function Home() {
       </div>
     </section>
 
-    <section id="story" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-16 md:py-20">
-      <div className="surface-card grid items-center gap-8 p-5 md:grid-cols-2 md:gap-12 md:p-10">
-        <div className="relative flex justify-center rounded-[26px] bg-black p-8 shadow-edge">
-          <div aria-hidden="true" className="absolute inset-x-10 bottom-10 h-24 rounded-full bg-accent/25 blur-3xl" />
-          <Book3D src="/book-cover.svg" width={220} height={318} pages={bookPages} />
-        </div>
-        <div>
-          <MagneticScatterText text="Chuyện của quán" className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent" />
-          <h2 className="mt-3 font-rund text-3xl font-bold leading-[1.08] tracking-[-0.03em] md:text-[2.65rem]">Một cuốn sổ, và rất nhiều mùi hương.</h2>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">Từng mẻ hạt, từng viên đá, từng món topping đều được ghi lại trong cuốn sổ nhỏ của quán. Rê chuột lên bìa để lật thử vài trang — biết đâu bạn tìm được món của mình.</p>
-          <div className="mt-6 flex items-center gap-3">
-            <SoundText text="Chạm thử" className="font-rund text-lg font-semibold text-accent" basePitch={340} />
-            <span aria-hidden="true" className="h-px flex-1 bg-gradient-to-r from-accent/40 to-transparent" />
-          </div>
-          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/30">Hover để lật trang · click để gấp lại</p>
-        </div>
-      </div>
-    </section>
-
     <section id="cart" className="mx-auto max-w-6xl scroll-mt-24 px-5 pb-20">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -464,7 +425,7 @@ export default function Home() {
                 const toppings = cartToppings[product.id] || [];
                 const unit = calculateUnitPrice(product.basePrice, size, toppings);
                 return <li className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0" key={product.id}>
-                  <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-xl shadow-edge" aria-hidden="true">{icons[product.category] || '🥤'}</span>
+                  <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-surface-2 text-xl shadow-edge" aria-hidden="true">{product.category === 'Coffee' ? '☕' : '🍵'}</span>
                   <span className="min-w-[9rem] flex-1 text-sm text-cream">
                     {product.name} · {size}
                     <small className="mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-cream/40">{toppings.map((id) => TOPPING_OPTIONS.find((option) => option.id === id)?.name).filter(Boolean).join(', ') || 'Không topping'} · {money(unit)} / món</small>
@@ -500,6 +461,26 @@ export default function Home() {
           >{checkoutMessage}</p>}
           <p className="font-mono text-[10px] leading-relaxed text-cream/30">Thanh toán mô phỏng cho mục đích học tập, không lưu thông tin thẻ.</p>
         </aside>
+      </div>
+    </section>
+
+
+    <section id="story" className="mx-auto max-w-6xl scroll-mt-24 px-5 py-16 md:py-20">
+      <div className="surface-card grid items-center gap-8 p-5 md:grid-cols-2 md:gap-12 md:p-10">
+        <div className="relative flex justify-center rounded-[26px] bg-black p-8 shadow-edge">
+          <div aria-hidden="true" className="absolute inset-x-10 bottom-10 h-24 rounded-full bg-accent/25 blur-3xl" />
+          <Book3D src="/book-cover.svg" width={220} height={318} pages={bookPages} />
+        </div>
+        <div>
+          <MagneticScatterText text="Chuyện của quán" className="font-mono text-[10px] uppercase tracking-[0.22em] text-accent" />
+          <h2 className="mt-3 font-rund text-3xl font-bold leading-[1.08] tracking-[-0.03em] md:text-[2.65rem]">Một cuốn sổ, và rất nhiều mùi hương.</h2>
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-muted">Từng mẻ hạt, từng viên đá, từng món topping đều được ghi lại trong cuốn sổ nhỏ của quán. Rê chuột lên bìa để lật thử vài trang — biết đâu bạn tìm được món của mình.</p>
+          <div className="mt-6 flex items-center gap-3">
+            <SoundText text="Chạm thử" className="font-rund text-lg font-semibold text-accent" basePitch={340} />
+            <span aria-hidden="true" className="h-px flex-1 bg-gradient-to-r from-accent/40 to-transparent" />
+          </div>
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.16em] text-cream/30">Hover để lật trang · click để gấp lại</p>
+        </div>
       </div>
     </section>
 
